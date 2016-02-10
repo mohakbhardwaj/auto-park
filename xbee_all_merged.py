@@ -2,36 +2,37 @@
 
 import rospy
 import serial
-from std_msgs.msg import String, Int16
+from std_msgs.msg import String
 import subprocess
 import time
 import os
 import signal
 from threading import Thread
-from zlib import crc32
 from protocolwrapper import (
     ProtocolWrapper, ProtocolStatus)
 from myformat import (
     message_format, message_crc, Container)
-import re
-import random
 import numpy as np
 import hashlib
 import sys
-import os
-import signal
+from autopark.msg import list_ui
 
 rospy.init_node("Xbee")
-#DK
-pub1 = rospy.Publisher("UI_Updates", String, queue_size=10)
-pub2 = rospy.Publisher("Planner", String, queue_size=10)
-pub3 = rospy.Publisher("Nav", String, queue_size=10)
+pub1 = rospy.Publisher("ui_update", list_ui, queue_size=10)
+pub2 = rospy.Publisher("bs", String, queue_size=10) #binary spots to planner
+pub3 = rospy.Publisher("destination", String, queue_size=10) # exit coordinates to navigation
 
 
 def signal_handler(signal, frame):
     print("I sent GOODBYE")
     mymsg = build_message_to_send(vcl_id,'GOODBYE',{0:0})
     ser.write(mymsg)
+    if isUI:
+	msg=list_ui()
+	msg.status='returned'
+	msg.vcl_id=vcl_id
+	msg.spot_id=25
+        pub1.publish(msg) 
     time.sleep(1)
     os.kill(os.getpid(), 9)
     
@@ -57,9 +58,9 @@ else:
 vcl_spot=0 #receive from planner
 
 
-port=str(sys.argv[2])
-ser = serial.Serial(port, 9600, timeout=0.5)
-ser.flushInput()
+#port=str(sys.argv[2])
+#ser = serial.Serial(port, 9600, timeout=0.5)
+#ser.flushInput()
 
 
 def connect():
@@ -131,13 +132,6 @@ def recover_msg(msg):
 	return rec_msg
 
 
-
-def sig(signal, frame):
-    ser.close()
-    print "Closing collaboration node"
-    os.kill(os.getpid(), 9)
-
-
 # Returns int list of ints in vcl_dict
 def dictToList(vcl_dict):
     data = []
@@ -161,57 +155,80 @@ def getmsg():
     rec_msg.data = listToDict(rec_msg.data)
     return rec_msg
 
-def listen_master():
-    rospy.Subscriber("Master", String, callback_master)
+def listen():
+    rospy.Subscriber("xbee_update", String, callback_master)
+    rospy.Subscriber("opt_spot", String, callback_planner)
+    rospy.Subscriber("vv_update", String, callback_UI)
     rospy.spin()
 
-def listen_planner():
-    rospy.Subscriber("Planner", String, callback_planner)
-    rospy.spin()
-
-def listen_UI():
-    rospy.Subscriber("UI", String, callback_UI)
-    rospy.spin()
 
 def callback_master(data):
-    
     global vcl_dict,isUI,vcl_spot
 
+    print "heard something from master:"
+    print data.data
+    
+
     if data.data=='park':
-	time.sleep(2)
+        print "heard park"
+
 	bs=[0]*24
+        print bs
 	for val in vcl_dict.values():
-	    if val!=25:
+            print val
+	    if val!=25 and val!=0:
 	        bs[val-1]=1
-	
-	pub2.publish(bs)
-		
-	
-    if data.data=='return':
-	time.sleep(2)
+
+        print "sending to bs"
+        print bs
+	pub2.publish(str(bs))
+
+    elif data.data=='return':
+        print "heard return"
+
+        print "sending exit coordinates to nav"
+
 	pub3.publish('exit coordinates')
+
 	vcl_dict[vcl_id]=25
 	vcl_spot=25
 	if isUI:
-	    pub1.publish('update')	#TODO
+            print "sending return to UI"
+	    msg=list_ui()
+	    msg.status='return'
+	    msg.vcl_id=vcl_id
+	    msg.spot_id=25
+            pub1.publish(msg)
 	else:
             print "Sending UPDATE message b/c ROS return received"
-	    mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})		#check
+	    mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
             ser.write(mymsg)
 
-    if data.data=='parked':
-        time.sleep(2)
+    elif data.data=='parked':
+        print "heard parked"
+
 	if isUI:
-	    pub1.publish('update')	#TODO	
+            print "sending parked to UI"
+	    msg=list_ui()
+	    msg.status='parked'
+	    msg.vcl_id=vcl_id
+	    msg.spot_id=vcl_spot
+            pub1.publish(msg)
 	else:
             print "Sending PARKED message b/c ROS parked received"
 	    mymsg = build_message_to_send(vcl_id, 'PARKED', {vcl_id:vcl_spot})		
             ser.write(mymsg)
 
-    if data.data=='returned':
-        time.sleep(2)
+    elif data.data=='returned':
+        print "heard returned"
+
 	if isUI:
-	    pub1.publish('update')	#TODO	
+            print "sending returned to UI"
+	    msg=list_ui()
+	    msg.status='returned'
+	    msg.vcl_id=vcl_id
+	    msg.spot_id=25
+            pub1.publish(msg)
 	else:
             print "Sending GOODBYE message b/c ROS returned received"
 	    mymsg = build_message_to_send(vcl_id, 'GOODBYE', {0:0})		
@@ -219,36 +236,78 @@ def callback_master(data):
         ser.close()
         print "Shutting down"
         os.kill(os.getpid(), 9)
+    
+    else:
+	print "Error: received unrecognized data from Master"
 
 
 # when msg received from UI, update local dict and send update to other XBees
 # Virtual vehicles
 def callback_UI(data):
     global vcl_dict, vcl_id
+
+    print "heard something from UI:"
+    print data.data
+
     temp = data.data
     temp = temp.split(',')
     temp[0]=int(temp[0])
     temp[1]=int(temp[1])
 
+    print "key and val:"
+    print temp[0]
+    print temp[1]
+
+    print "original dict"
+    print vcl_dict
+
+    if temp[0] in vcl_dict:
+        old_spot = vcl_dict[temp[0]]
+    else:
+        old_spot = temp[1]
+
     vcl_dict[temp[0]] = temp[1]
 
-    print "Sending UPDATE b/c UI VV message received"
-    mymsg = build_message_to_send(temp[0], 'UPDATE', {temp[0]:temp[1]})
+    print "updated dict"
+    print vcl_dict
+
+    if old_spot == 25 and temp[1] == 0:
+        print "Sending GOODBYE b/c UI VV 25 -> 0"
+        mymsg = build_message_to_send(temp[0], 'GOODBYE', {0:0})
+    else:
+        print "Sending UPDATE b/c UI VV message received"
+        mymsg = build_message_to_send(temp[0], 'UPDATE', {temp[0]:temp[1]})
     ser.write(mymsg)
 
 # when spot chosen from planner, update local dict and send update to other XBees and UI
 def callback_planner(data):
     #assuming incoming data is string containing spot chosen
     global vcl_dict, vcl_id, vcl_spot, isUI
+
+    print "heard something from planner:"
+    print data.data
+
     temp = data.data
     temp = int(temp)
+
+    print "this is the spot i know and love"
+    print temp
+
+    print "original dict"
+    print vcl_dict
 
     vcl_dict[vcl_id] = temp
     vcl_spot = temp
 
-    #TODO send update to UI
+    print "updated dict"
+    print vcl_dict
+
     if isUI:
-        #pub1.publish(vcl_id, vcl_spot)
+	msg=list_ui()
+	msg.status='parking'
+	msg.vcl_id=vcl_id
+	msg.spot_id=vcl_spot
+        pub1.publish(msg)
         print 'sending selected spot to UI'
 
     # send update to other XBees
@@ -259,7 +318,7 @@ def callback_planner(data):
 
 def callback():
     print "entering callback"
-    global liq, vcl_dict, liq_id, isUI, vcl_spot, hello_dict, vcl_id, hellocount
+    global vcl_dict, liq_id, isUI, vcl_spot, hello_dict, vcl_id, hellocount
 
     while True:
         while ser.inWaiting()>0:
@@ -274,10 +333,14 @@ def callback():
                 if rec_msg.vcl_id == vcl_id or rec_msg.vcl_id > liq_id:
                     print 'rec_msg.data'
                     print rec_msg.data
-                    for key, val in rec_msg.data:
+                    print 'type rec_msg.data'
+                    print type(rec_msg.data)
+
+                    for key, val in rec_msg.data.iteritems():
                         vcl_dict[key]=val
                     liq_id = max(vcl_dict.keys())
-                    vcl_id = liq_id + 1
+                    vcl_id = liq_id+1
+                    liq_id = vcl_id
                     vcl_dict[vcl_id]=vcl_spot
                     # send update with personal spot
                     # vcl_id, msg_type, data
@@ -291,6 +354,19 @@ def callback():
                     print "Sending update because I have arrived, mofo"
                     mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})		
                     ser.write(mymsg)
+                    #Tell the UI that I, and all my friends, exist.
+                    if isUI:
+                        for key, val in vcl_dict:
+	    		    msg=list_ui()
+			    if val==0:
+				msg.status='in_queue'
+			    elif val==25:
+				msg.status='returning'
+			    else:
+				msg.status='parked'				
+			    msg.vcl_id=key
+			    msg.spot_id=val
+            	            pub1.publish(msg)
 
 
 
@@ -324,8 +400,6 @@ def callback():
     
                 # if this is the second hello from new vehicle AND i am second-to-liq, send intro, update dict, update liq
                 elif hello_dict[liq_id+1]>=2 and vcl_id == stliq_id:
-                    liq_id = liq_id + 1
-                    vcl_dict[liq_id] = 0
                     #send intro
                     print "Sending INTRO message"
                     mymsg = build_message_to_send(vcl_id, 'INTRO', vcl_dict)
@@ -333,44 +407,83 @@ def callback():
 
             if rec_msg.message_type=='UPDATE':
                 print "I received UPDATE from ", rec_msg.vcl_id
+		print "original dict"
+		print vcl_dict
                 #Updates dictionary with spot chosen by rec_msg.vcl_id
+		if rec_msg.vcl_id in vcl_dict:
+                    temp_spot=vcl_dict[rec_msg.vcl_id]
+                else:
+                    temp_spot=rec_msg.data[rec_msg.vcl_id]
                 vcl_dict[rec_msg.vcl_id]=rec_msg.data[rec_msg.vcl_id]
-                #TODO send msg to UI - rec_msg.vcl_id has chosen spot
+                new_spot=vcl_dict[rec_msg.vcl_id]
+		print "new dict"
+		print vcl_dict
+		liq_id=max(vcl_dict.keys())
                 if isUI == True:
-                    #pub1.publish(rec_msg.vcl_id, rec_msg.data[vcl_id])
+		    msg=list_ui()
+		    if temp_spot==0 and new_spot == 0:
+                        msg.status='in_queue'
+                    elif temp_spot==0 and new_spot>0 and new_spot <25:
+                        msg.status='parking'
+                    elif temp_spot>0 and temp_spot<25 and new_spot>0 and new_spot<25:
+                        msg.status='parked'			
+                    else:
+		        msg.status='returning'
+			   				
+                    msg.vcl_id=rec_msg.vcl_id
+                    msg.spot_id=new_spot
+                    pub1.publish(msg)
                     print 'sending selected spot to UI'
+		    print "status is"
+		    print msg.status
     
             if rec_msg.message_type=='PARKED':
                 print "I received PARKED from ", rec_msg.vcl_id
-                #TODO if UI, update UI
+                vcl_dict[rec_msg.vcl_id]=rec_msg.data[rec_msg.vcl_id]
                 if isUI == True:
-                    #pub1.publish(rec_msg.vcl_id)
+                    msg=list_ui()
+		    msg.status='parked'
+                    msg.vcl_id=rec_msg.vcl_id
+                    msg.spot_id=vcl_dict[rec_msg.vcl_id]
+                    pub1.publish(msg)
                     print 'sending PARKED status to UI'
                     
             if rec_msg.message_type=='GOODBYE':
                 print "I received GOODBYE from ", rec_msg.vcl_id
+                
+                print "original dict"
+                print vcl_dict
+
                 if rec_msg.vcl_id in vcl_dict:
                     vcl_dict.pop(rec_msg.vcl_id)
-                #TODO send msg to UI - rec_msg.vcl_id has left parking lot
+
+                print "updated dict"
+                print vcl_dict
+
+                if vcl_id==max(vcl_dict.keys()):
+                    liq_id=vcl_id
+                    print "I AM THE MASTERFUL LIQ NOW!!!"
+
                 if isUI == True:
-                    #pub1.publish(rec_msg.vcl_id)
+                    msg=list_ui()
+		    msg.status='returned'
+                    msg.vcl_id=rec_msg.vcl_id
+                    msg.spot_id=25
+                    pub1.publish(msg)
                     print 'sending GOODBYE status to UI'
 
 		
 t1 = Thread(target=callback)
-t2 = Thread(target=listen_master)
-t3 = Thread(target=listen_UI)
-t4 = Thread(target=listen_planner)
+t2 = Thread(target=listen)
 
-signal.signal(signal.SIGINT, sig)
 
 while not rospy.is_shutdown():
+    connect()
     global liq_id, vcl_id, hellocount
     hellocount=0
     vcl_id=0
     liq_id=5
-    
-    
+        
     t1.start()
 
     while vcl_id==0 and hellocount<=2:
@@ -379,6 +492,14 @@ while not rospy.is_shutdown():
             vcl_dict={5:0}  
 	    hellocount=3
             print "I'm 5 now"
+            # Publish existence to UI
+            if isUI:
+                msg=list_ui()
+		msg.status='in_queue'
+                msg.vcl_id=vcl_id
+                msg.spot_id=vcl_spot
+                pub1.publish(msg)
+                print "I'm the muhfuggin UI"
         
 	else:
 	    hellocount=hellocount+1
@@ -386,10 +507,8 @@ while not rospy.is_shutdown():
 	    ser.write(mymsg)
 	    print "I sent HELLO"
 		
-	    time.sleep(2)
+	    time.sleep(3.5)
 	        #wait
     
     t2.start()
-    t3.start()
-    t4.start()
     signal.pause()
