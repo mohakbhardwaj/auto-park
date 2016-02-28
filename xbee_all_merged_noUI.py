@@ -19,7 +19,6 @@ import sys
 
 rospy.init_node("Xbee")
 #pub1 = rospy.Publisher("ui_update", list_ui, queue_size=10)
-pub1 = rospy.Publisher("ui_update", String, queue_size=10)
 pub2 = rospy.Publisher("bs", String, queue_size=10) #binary spots to planner
 pub3 = rospy.Publisher("destination", String, queue_size=10) # exit coordinates to navigation
 
@@ -29,10 +28,10 @@ def signal_handler(signal, frame):
     mymsg = build_message_to_send(vcl_id,'GOODBYE',{0:0})
     ser.write(mymsg)
     #if isUI:
-##	msg=list_ui()
-#	msg.status='returned'
-#	msg.vcl_id=vcl_id
-#	msg.spot_id=25
+#        msg=list_ui()
+#        msg.status='returned'
+#        msg.vcl_id=vcl_id
+#        msg.spot_id=25
  #       pub1.publish(msg) 
     time.sleep(1)
     os.kill(os.getpid(), 9)
@@ -55,7 +54,7 @@ global liq_id
 #if isUI==1:
 #    isUI=True
 #else:
-#    isUI=False
+ #   isUI=False
 vcl_spot=0 #receive from planner
 
 
@@ -69,7 +68,7 @@ def connect():
     x = subprocess.check_output("ls /dev/serial/by-id", shell=True).split()
     if x[0].find("Digi") != -1:
         y = subprocess.check_output("dmesg | grep tty", shell=True).split()
-	indices = [i for i, x in enumerate(y) if x == "FTDI"]
+        indices = [i for i, x in enumerate(y) if x == "FTDI"]
         address = "/dev/" + y[indices[-1]+8]
         ser = serial.Serial(address, 9600, timeout=1)
         ser.flushInput()
@@ -81,6 +80,7 @@ def connect():
 
     return
 
+
 def build_message_to_send(
         vcl_id, message_type,
          vcl_dict):
@@ -89,8 +89,8 @@ def build_message_to_send(
     datalen = len(data)
   
     raw = message_format.build(Container(
-	vcl_id=vcl_id,      
-	message_type=message_type,
+        vcl_id=vcl_id,      
+        message_type=message_type,
         datalen=datalen,
         data=data,
         crc=0))
@@ -111,25 +111,25 @@ def build_message_to_send(
 
 
 def recover_msg(msg):
-	pw = ProtocolWrapper(
+        pw = ProtocolWrapper(
         header=PROTOCOL_HEADER,
         footer=PROTOCOL_FOOTER,
         dle=PROTOCOL_DLE)
 
-	status = map(pw.input, msg)
-	rec_crc=0
-	calc_crc=1
-	
-	if status[-1] == ProtocolStatus.MSG_OK:
-    		rec_msg = pw.last_message  		
-    		rec_crc = message_crc.parse(rec_msg[-8:]).crc
-    		calc_crc = int(''.join([i for i in hashlib.md5(rec_msg[:-8]).hexdigest() if i.isdigit()])[0:10])
+        status = map(pw.input, msg)
+        rec_crc=0
+        calc_crc=1
+        
+        if status[-1] == ProtocolStatus.MSG_OK:
+                rec_msg = pw.last_message
+                rec_crc = message_crc.parse(rec_msg[-8:]).crc
+                calc_crc = int(''.join([i for i in hashlib.md5(rec_msg[:-8]).hexdigest() if i.isdigit()])[0:10])
 
-    	if rec_crc != calc_crc:
-        	print 'Error: CRC mismatch'
+        if rec_crc != calc_crc:
+                print 'Error: CRC mismatch'
      
 
-	return rec_msg
+        return rec_msg
 
 
 # Returns int list of ints in vcl_dict
@@ -149,7 +149,7 @@ def listToDict(data):
 
 def getmsg():
     time.sleep(0.5) 
-    getmsg = ser.read(ser.inWaiting())	    
+    getmsg = ser.read(ser.inWaiting())            
     rec_msg = recover_msg(getmsg)    
     rec_msg= message_format.parse(rec_msg)
     rec_msg.data = listToDict(rec_msg.data)
@@ -171,77 +171,72 @@ def callback_master(data):
     if data.data=='park':
         print "heard park"
 
-	bs=[0]*24
+        bs=[0]*24
         print bs
-	for val in vcl_dict.values():
+        for val in vcl_dict.values():
             print val
-	    if val!=25 and val!=0:
-	        bs[val-1]=1
+            if val!=25 and val!=0:
+                bs[val-1]=1
 
         print "sending to bs"
         print bs
-	pub2.publish(str(bs))
+        pub2.publish(str(bs))
 
     elif data.data=='return':
         print "heard return"
 
         print "sending exit coordinates to nav"
 
-	pub3.publish('exit coordinates')
+        pub3.publish('exit coordinates')
 
-	vcl_dict[vcl_id]=25
-	vcl_spot=25
-	#if isUI:
-        #    print "sending return to UI"
-	#    msg=list_ui()
-	#    msg.status='return'
-	#    msg.vcl_id=vcl_id
-	#    msg.spot_id=25
-        #    pub1.publish(msg)
-	#else:
+        vcl_dict[vcl_id]=25
+        vcl_spot=25
+#        if isUI:
+ #           print "sending return to UI"
+#            msg=list_ui()
+#            msg.status='return'
+#            msg.vcl_id=vcl_id
+#            msg.spot_id=25
+ #           pub1.publish(msg)
+#        else:
         print "Sending UPDATE message b/c ROS return received"
-	mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
+        mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
         ser.write(mymsg)
 
     elif data.data=='parked':
         print "heard parked"
 
-	#if isUI:
-        #    print "sending parked to UI"
-	#    msg=list_ui()
-	#    msg.status='parked'
-	#    msg.vcl_id=vcl_id
-	#    msg.spot_id=vcl_spot
-        #    pub1.publish(msg)
-	#else:
+#        if isUI:
+         #   print "sending parked to UI"
+         #   msg=list_ui()
+         #   msg.status='parked'
+         #   msg.vcl_id=vcl_id
+         #   msg.spot_id=vcl_spot
+         #   pub1.publish(msg)
+        #else:
         print "Sending PARKED message b/c ROS parked received"
-	mymsg = build_message_to_send(vcl_id, 'PARKED', {vcl_id:vcl_spot})		
+        mymsg = build_message_to_send(vcl_id, 'PARKED', {vcl_id:vcl_spot})                
         ser.write(mymsg)
 
     elif data.data=='returned':
         print "heard returned"
 
-	#if isUI:
+        #if isUI:
         #    print "sending returned to UI"
-	#    msg=list_ui()
-	#    msg.status='returned'
-	#    msg.vcl_id=vcl_id
-	#    msg.spot_id=25
+        #    msg=list_ui()
+        #    msg.status='returned'
+        #    msg.vcl_id=vcl_id
+        #    msg.spot_id=25
         #    pub1.publish(msg)
-	#else:
+        #else:
         print "Sending GOODBYE message b/c ROS returned received"
-	mymsg = build_message_to_send(vcl_id, 'GOODBYE', {0:0})		
+        mymsg = build_message_to_send(vcl_id, 'GOODBYE', {0:0})
         ser.write(mymsg)
-        time.sleep(1)
-        
-        #ser.close()
-
         print "Shutting down"
         os.kill(os.getpid(), 9)
-        exit()
     
     else:
-	print "Error: received unrecognized data from Master"
+        print "Error: received unrecognized data from Master"
 
 
 # when msg received from UI, update local dict and send update to other XBees
@@ -283,6 +278,7 @@ def callback_UI(data):
 
     ser.write(mymsg)
 
+
 # when spot chosen from planner, update local dict and send update to other XBees and UI
 def callback_planner(data):
     #assuming incoming data is string containing spot chosen
@@ -294,7 +290,7 @@ def callback_planner(data):
     temp = data.data
     temp = int(temp)
 
-    print "this is the spot i know and love"
+    print "this is the spot i have chosen"
     print temp
 
     print "original dict"
@@ -307,10 +303,10 @@ def callback_planner(data):
     print vcl_dict
 
     #if isUI:
-#	msg=list_ui()
-#	msg.status='parking'
-#	msg.vcl_id=vcl_id
-#	msg.spot_id=vcl_spot
+#        msg=list_ui()
+#        msg.status='parking'
+#        msg.vcl_id=vcl_id
+#        msg.spot_id=vcl_spot
  #       pub1.publish(msg)
   #      print 'sending selected spot to UI'
 
@@ -322,7 +318,7 @@ def callback_planner(data):
 
 def callback():
     print "entering callback"
-    global vcl_dict, liq_id, vcl_spot, hello_dict, vcl_id, hellocount#, isUI
+    global liq, vcl_dict, liq_id, vcl_spot, hello_dict, vcl_id, hellocount#, isUI
 
     while True:
         while ser.inWaiting()>0:
@@ -337,63 +333,51 @@ def callback():
                 if rec_msg.vcl_id == vcl_id or rec_msg.vcl_id > liq_id:
                     print 'rec_msg.data'
                     print rec_msg.data
-                    for key, val in rec_msg.data:
+                    for key, val in rec_msg.data.iteritems():
                         vcl_dict[key]=val
                     liq_id = max(vcl_dict.keys())
-                    vcl_id = liq + 1
-                    liq_id = vcl_id
+                    vcl_id = liq_id + 1
                     vcl_dict[vcl_id]=vcl_spot
+                    liq_id = vcl_id
+                    print "I'm the liq"
                     # send update with personal spot
                     # vcl_id, msg_type, data
                     print "Sending update because erroneous INTRO received"
-                    mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})		
+                    mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
                     ser.write(mymsg)
                 if vcl_id == 0:
                     vcl_id = max(rec_msg.data.keys())+1
                     vcl_dict = rec_msg.data
                     vcl_dict[vcl_id]=vcl_spot
-                    print "Sending update because I have arrived, mofo"
-                    print "vcl dict"
-                    print vcl_dict
-                    mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})		
+                    liq_id = vcl_id
+                    print "I'm the liq"
+                    print "Sending update because I have arrived"
+                    mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
                     ser.write(mymsg)
                     #Tell the UI that I, and all my friends, exist.
                     #if isUI:
-                    #    for key, val in vcl_dict:
-	    	#	    msg=list_ui()
-	#		    if val==0:
-#				msg.status='in_queue'
-#			    elif val==25:
-#				msg.status='returning'
-#			    else:
-#				msg.status='parked'				
-#			    msg.vcl_id=key
-#			    msg.spot_id=val
- #           	            pub1.publish(msg)
+                     #   for key, val in vcl_dict.iteritems():
+                            #    msg=list_ui()
+                         #   if val==0:
+                        #        msg.status='in_queue'
+                         #   elif val==25:
+                        #        msg.status='returning'
+                         #   else:
+                        #        msg.status='parked'
+                         #   msg.vcl_id=key
+                          #  msg.spot_id=val
+                          # pub1.publish(msg)
 
 
 
             if rec_msg.message_type=='HELLO':
                 print "I received HELLO from ", rec_msg.vcl_id
+
                 # add liq_id+1 to hellos or increment val if necessary
-
-                print "hello_dict"
-                print hello_dict
-                
-                print "liq_id"
-                print liq_id
-
                 if liq_id+1 in hello_dict:
-                    print "this is the second hello - incrementing liq_id+1 in hello_dict"
                     hello_dict[liq_id+1]=hello_dict[liq_id+1]+1
-                    print "hello_dict"
-                    print hello_dict
-     
                 else:
-                    print "this is the first hello"
                     hello_dict[liq_id+1]=1
-                    print "hello_dict"
-                    print hello_dict
     
                 # find second to liq_id.  if len(dict) < 2, stliq_id is the liq_id
                 stliq_id = vcl_dict.keys()
@@ -402,9 +386,7 @@ def callback():
                     stliq_id=max(stliq_id)
                 else:
                     stliq_id = liq_id
-
-                print "stliq_id"
-                print stliq_id
+    
 
                 # if i am liq, send intro
                 print 'liq'
@@ -413,13 +395,12 @@ def callback():
                 print vcl_id
                 if liq_id == vcl_id:
                     print "Sending INTRO message"
-                    print "this is the dict i'm sending"
-                    print vcl_dict
                     mymsg = build_message_to_send(vcl_id, 'INTRO', vcl_dict)
                     ser.write(mymsg)
     
                 # if this is the second hello from new vehicle AND i am second-to-liq, send intro, update dict, update liq
                 elif hello_dict[liq_id+1]>=2 and vcl_id == stliq_id:
+                    vcl_dict[liq_id] = 0
                     #send intro
                     print "Sending INTRO message"
                     mymsg = build_message_to_send(vcl_id, 'INTRO', vcl_dict)
@@ -428,43 +409,35 @@ def callback():
             if rec_msg.message_type=='UPDATE':
                 print "I received UPDATE from ", rec_msg.vcl_id
                 #Updates dictionary with spot chosen by rec_msg.vcl_id
-                print "original dict"
-                print vcl_dict
-
-		if rec_msg.vcl_id in vcl_dict:
+                if rec_msg.vcl_id in vcl_dict:
                     temp_spot=vcl_dict[rec_msg.vcl_id]
                 else:
                     temp_spot=rec_msg.data[rec_msg.vcl_id]
                 vcl_dict[rec_msg.vcl_id]=rec_msg.data[rec_msg.vcl_id]
                 new_spot=vcl_dict[rec_msg.vcl_id]
-
-                print "new dict"
-                print vcl_dict
-
                 liq_id = max(vcl_dict.keys())
-
                 #if isUI == True:
-		#    msg=list_ui()
-		#    if temp_spot==0 and new_spot == 0:
-                #        msg.status='in_queue'
-                #    elif temp_spot==0 and new_spot>0 and new_spot <25:
-                #        msg.status='parking'
-                #    elif temp_spot>0 and temp_spot<25 and new_spot>0 and new_spot<25:
-                #        msg.status='parked'
-                #    else:
-		#        msg.status='returning'
-	#		   				
-        #            msg.vcl_id=rec_msg.vcl_id
-        #            msg.spot_id=new_spot
-        #            pub1.publish(msg)
-        #            print 'sending selected spot to UI'
+                 #   msg=list_ui()
+                  #  if temp_spot==0 and new_spot == 0:
+                   #     msg.status='in_queue'
+                    #elif temp_spot==0 and new_spot>0 and new_spot <25:
+                    #    msg.status='parking'
+                    #elif temp_spot>0 and temp_spot<25 and new_spot>0 and new_spot<25:
+                    #    msg.status='parked'
+                    #else:
+                    #    msg.status='returning'
+
+                    #msg.vcl_id=rec_msg.vcl_id
+                    #msg.spot_id=new_spot
+                    #pub1.publish(msg)
+                    #print 'sending selected spot to UI'
     
             if rec_msg.message_type=='PARKED':
                 print "I received PARKED from ", rec_msg.vcl_id
                 vcl_dict[rec_msg.vcl_id]=rec_msg.data[rec_msg.vcl_id]
                 #if isUI == True:
                 #    msg=list_ui()
-		#    msg.status='parked'
+                #    msg.status='parked'
                 #    msg.vcl_id=rec_msg.vcl_id
                 #    msg.spot_id=vcl_dict[rec_msg.vcl_id]
                 #    pub1.publish(msg)
@@ -482,19 +455,17 @@ def callback():
                 print "updated dict"
                 print vcl_dict
 
-                if vcl_id == max(vcl_dict.keys()):
-                    liq_id=vcl_id
-                    print "I AM THE MASTERFUL LIQ NOW!!!"
+                liq_id = max(vcl_dict.keys())
 
                 #if isUI == True:
                 #    msg=list_ui()
-		#    msg.status='returned'
+                #    msg.status='returned'
                 #    msg.vcl_id=rec_msg.vcl_id
-                #    msg.spot_id=25
+                #    msg.spot_id=0
                 #    pub1.publish(msg)
                 #    print 'sending GOODBYE status to UI'
 
-		
+                
 t1 = Thread(target=callback)
 t2 = Thread(target=listen)
 
@@ -505,31 +476,32 @@ while not rospy.is_shutdown():
     vcl_id=0
     liq_id=5
     
+    time.sleep(10)
     t1.start()
 
     while vcl_id==0 and hellocount<=2:
         if hellocount==2:
-	    vcl_id=5
+            vcl_id=5
             vcl_dict={5:0}  
-	    hellocount=3
+            hellocount=3
             print "I'm 5 now"
             # Publish existence to UI
             #if isUI:
             #    msg=list_ui()
-	#	msg.status='in_queue'
-        #        msg.vcl_id=vcl_id
-        #        msg.spot_id=vcl_spot
-        #        pub1.publish(msg)
-        #        print "I'm the muhfuggin UI"
+        #        msg.status='in_queue'
+         #       msg.vcl_id=vcl_id
+          #      msg.spot_id=vcl_spot
+           #     pub1.publish(msg)
+            #    print "I'm the UI"
         
-	else:
-	    hellocount=hellocount+1
-	    mymsg = build_message_to_send(vcl_id, 'HELLO', {0:0})
-	    ser.write(mymsg)
-	    print "I sent HELLO"
-		
-	    time.sleep(3.5)
-	        #wait
+        else:
+            hellocount=hellocount+1
+            mymsg = build_message_to_send(vcl_id, 'HELLO', {0:0})
+            ser.write(mymsg)
+            print "I sent HELLO"
+                
+            time.sleep(3.5)
+                #wait
     
     t2.start()
     signal.pause()
