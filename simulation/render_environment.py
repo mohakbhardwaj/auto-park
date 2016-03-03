@@ -11,7 +11,7 @@ from simulation.msg import *
 
 
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
-planner_data = rospy.Publisher("visualization_msgs", planner_transmit, queue_size=0, latch=True)
+planner_data = rospy.Publisher("active_state", sim_transmit, queue_size=0, latch=True)
 
 rospy.init_node("Render")
 speed = 0.1
