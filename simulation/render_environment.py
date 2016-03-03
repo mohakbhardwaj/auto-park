@@ -55,7 +55,9 @@ class Car:
 
     def move(self):
         # update the state of the vehicle
-        return int((self.motion_current[0] - self.motion_start)/0.1)
+        self.path_index = int((self.motion_current[0] - self.motion_start)/0.1)
+        self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
+        self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[self.path_index][2])
 
     def interpolate(self):
         for i in range(0, len(self.vehicle_path)):
