@@ -15,7 +15,7 @@ planner_data = rospy.Publisher("active_state", sim_transmit, queue_size=0, latch
 
 rospy.init_node("Render")
 speed = 0.1
-
+current_time = [0]
 
 # class which takes care of all the aspects of a vehicle
 class Car:
@@ -35,6 +35,7 @@ class Car:
         self.id = vehicle_id
         self.vehicle_path = path
         self.motion_start = 0
+        self.motion_current = current_time
         self.motion = 0
         self.path_index = 0
         self.interpolated_path = []
@@ -54,7 +55,7 @@ class Car:
 
     def move(self):
         # update the state of the vehicle
-        self.motion_start = time.time()
+        return int((self.motion_current[0] - self.motion_start)/0.1)
 
     def interpolate(self):
         for i in range(0, len(self.vehicle_path)):
@@ -71,6 +72,8 @@ class Car:
         # draw the path of the vehicle on RViz
         self.vehicle_path = path
         self.motion = 1
+        self.motion_start = time.time()
+
 
     def clear_path(self):
         # clear the path of the vehicle
@@ -94,5 +97,13 @@ for ctr in range(0, 10):
     a = Car(ctr, [], 0.8)
     vehicles.append(a)
 
+
 # have a custom message of line, two markers, and a cube in each object of the class
 # keep on updating the positions based on motion flag
+def draw():
+    global current_time
+    while True:
+        current_time[0] = time.time()
+        for cars in vehicles:
+            if cars.motion:
+                print cars.move()
