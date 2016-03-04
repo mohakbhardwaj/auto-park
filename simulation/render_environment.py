@@ -30,6 +30,7 @@ class Car:
     def __init__(self, vehicle_id, path, size):
         # set the markers associated with this vehicle
         self.vehicle_marker = Marker()
+        self.vehicle_marker.action = Marker.ADD
         self.destination_marker = Marker()
         self.path_marker = Marker()
         self.vehicle_marker.type = Marker.CUBE
@@ -95,6 +96,8 @@ class Car:
     def draw_path(self, path, state):
         # draw the path of the vehicle on RViz
         self.vehicle_path = path
+        self.destination_marker.action = Marker.ADD
+        self.path_marker.action = Marker.ADD
         self.motion = 1
         self.motion_start = time.time()
         self.interpolate()
@@ -119,6 +122,7 @@ class Car:
         self.interpolated_path = []
         self.motion_start = 0
         self.motion = 0
+        self.path_marker.action = Marker.DELETE
         self.destination_marker.action = Marker.DELETE
 
     def clear(self):
