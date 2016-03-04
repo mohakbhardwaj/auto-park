@@ -113,7 +113,8 @@ class Car:
             self.state = "idle"
         elif self.state == "returning":
             returning_times.append(len(self.interpolated_path)/speed)
-            self.state = "idle"
+            self.clear()
+            self.state = "clear"
         self.vehicle_path = []
         self.interpolated_path = []
         self.motion_start = 0
