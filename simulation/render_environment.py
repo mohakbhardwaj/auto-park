@@ -18,6 +18,9 @@ rospy.init_node("Render")
 speed = 0.1
 current_time = [0]
 path_resolution = 5
+parking_times = []
+returning_times = []
+
 
 # class which takes care of all the aspects of a vehicle
 class Car:
@@ -60,16 +63,23 @@ class Car:
         self.destination_marker.pose.position.x, self.destination_marker.pose.position.y, self.destination_marker.pose.position.z = [0, 0, 0]
 
     def quatfromang(self, yaw):
+        # get quaternion for euler angles
         return tf.transformations.quaternion_from_euler(0, 0, yaw)
 
     def move(self):
         # update the state of the vehicle
         self.path_index = int((self.motion_current[0] - self.motion_start)/0.1)
-        self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
-        self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[self.path_index][2])
-        self.vehicle_path.points = self.vehicle_path.points[int(self.path_index/path_resolution):-1]
+        if self.path_index >= len(self.interpolated_path):
+            self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[-1][0:2]
+            self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[-1][2])
+            self.clear_path()
+        else:
+            self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
+            self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[self.path_index][2])
+            self.vehicle_path.points = self.vehicle_path.points[int(self.path_index/path_resolution):-1]
 
     def interpolate(self):
+        # add intermediate steps for smooth motion
         for i in range(0, len(self.vehicle_path)):
             if self.vehicle_path[i][2] != self.vehicle_path[i+1][2]:
                 self.interpolated_path += []
@@ -80,12 +90,13 @@ class Car:
                 heading = self.vehicle_path[i][2] * steps
                 self.interpolated_path += zip(xspan, yspan, heading)
 
-    def draw_path(self, path):
+    def draw_path(self, path, state):
         # draw the path of the vehicle on RViz
         self.vehicle_path = path
         self.motion = 1
         self.motion_start = time.time()
         self.interpolate()
+        self.state = state
         pts = Point()
         pts.z = 0
         for i in range(0, len(self.interpolated_path), path_resolution):
@@ -95,6 +106,12 @@ class Car:
 
     def clear_path(self):
         # clear the path of the vehicle
+        if self.state == "parking":
+            parking_times.append(len(self.interpolated_path)/speed)
+            self.state = "idle"
+        elif self.state == "returning":
+            returning_times.append(len(self.interpolated_path)/speed)
+            self.state = "idle"
         self.vehicle_path = []
         self.interpolated_path = []
         self.motion_start = 0
@@ -116,7 +133,7 @@ for ctr in range(0, 10):
     vehicles.append(a)
 
 
-# have a custom message of line, two markers, and a cube in each object of the class
+# have a custom message of line, cylinder marker, and a cube marker in each object of the class
 # keep on updating the positions based on motion flag
 def draw():
     global current_time
