@@ -8,6 +8,7 @@ import numpy as np
 
 from visualization_msgs.msg import *
 from simulation.msg import *
+from geometry_msgs.msg import Point
 
 
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
@@ -16,6 +17,7 @@ planner_data = rospy.Publisher("active_state", sim_transmit, queue_size=0, latch
 rospy.init_node("Render")
 speed = 0.1
 current_time = [0]
+path_resolution = 5
 
 # class which takes care of all the aspects of a vehicle
 class Car:
@@ -24,13 +26,17 @@ class Car:
         # set the markers associated with this vehicle
         self.vehicle_marker = Marker()
         self.destination_marker = Marker()
+        self.path_marker = Marker()
         self.vehicle_marker.type = Marker.CUBE
         self.destination_marker.type = Marker.CYLINDER
+        self.path_marker.type = Marker.LINE_STRIP
         self.vehicle_marker.ns = "Vehicle"
         self.destination_marker.ns = "Markers"
+        self.path_marker.ns = "Path"
         self.state = "idle"
         self.vehicle_marker.color.a = 1
         self.destination_marker.color.a = 1
+        self.path_marker.color.a = 1
         self.color = [round(random.random(), 2) for _ in range(0, 3)]
         self.id = vehicle_id
         self.vehicle_path = path
@@ -41,10 +47,13 @@ class Car:
         self.interpolated_path = []
         self.vehicle_marker.id = vehicle_id
         self.destination_marker.id = vehicle_id
+        self.path_marker = vehicle_id
         self.vehicle_marker.color.r, self.vehicle_marker.color.g, self.vehicle_marker.color.b = self.color
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
+        self.path_marker.color.r, self.path_marker.color.g, self.path_marker.color.b = self.color
         self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = [size, 0.4, 0.5]
         self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [size, size, 0.1]
+        self.destination_marker.scale.x = 1
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [0, 0, 0, 1]
         self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [0, 0, 0, 1]
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y, self.vehicle_marker.pose.position.z = [0, 0, 0]
@@ -58,6 +67,7 @@ class Car:
         self.path_index = int((self.motion_current[0] - self.motion_start)/0.1)
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[self.path_index][2])
+        self.vehicle_path.points = self.vehicle_path.points[int(self.path_index/path_resolution):-1]
 
     def interpolate(self):
         for i in range(0, len(self.vehicle_path)):
@@ -75,7 +85,13 @@ class Car:
         self.vehicle_path = path
         self.motion = 1
         self.motion_start = time.time()
-
+        self.interpolate()
+        pts = Point()
+        pts.z = 0
+        for i in range(0, len(self.interpolated_path), path_resolution):
+            pts.x = self.interpolated_path[i][0]
+            pts.y = self.interpolated_path[i][1]
+            self.vehicle_path.points.append(pts)
 
     def clear_path(self):
         # clear the path of the vehicle
