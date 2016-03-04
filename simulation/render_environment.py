@@ -5,6 +5,7 @@ import time
 import random
 import tf
 import numpy as np
+from threading import Thread
 
 from visualization_msgs.msg import *
 from simulation.msg import *
@@ -20,6 +21,7 @@ current_time = [0]
 path_resolution = 5
 parking_times = []
 returning_times = []
+vehicles = []
 
 
 # class which takes care of all the aspects of a vehicle
@@ -126,11 +128,17 @@ class Car:
         return self.interpolated_path[self.path_index]
 
 
-vehicles = []
+def callback(data):
+    if data.flag == "ADD":
+        a = Car(data.id, data.path, data.size)
+        vehicles.append(a)
+    elif data.flag == "UPDATE":
+        vehicles[data.id].draw_path(data.path)
 
-for ctr in range(0, 10):
-    a = Car(ctr, [], 0.8)
-    vehicles.append(a)
+
+def update():
+    rospy.Subscriber("render_push", vehicle_update, callback)
+    rospy.spin()
 
 
 # have a custom message of line, cylinder marker, and a cube marker in each object of the class
@@ -139,6 +147,12 @@ def draw():
     global current_time
     while True:
         current_time[0] = time.time()
-        for cars in vehicles:
-            if cars.motion:
-                print cars.move()
+        for car in vehicles:
+            if car.motion:
+                car.move()
+
+access = Thread(target=update)
+render = Thread(target=draw)
+
+access.start()
+render.start()
