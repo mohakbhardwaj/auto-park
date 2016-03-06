@@ -9,13 +9,13 @@ from threading import Thread
 
 from visualization_msgs.msg import *
 from simulation.msg import *
+from simulation.srv import *
 from geometry_msgs.msg import Point
 
 
-rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
-planner_data = rospy.Publisher("active_state", sim_transmit, queue_size=0, latch=True)
-
 rospy.init_node("Render")
+rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
+
 speed = 0.1
 current_time = [0]
 path_resolution = 5
@@ -129,11 +129,11 @@ class Car:
         # publish a message to remove the vehicle
         self.vehicle_marker.action = Marker.DELETE
 
-    def pos_response(self):
+    def service_response(self):
         return self.interpolated_path[self.path_index]
 
 
-def callback(data):
+def vehicle_state(data):
     if data.flag == "ADD":
         a = Car(data.id, data.path, data.size)
         vehicles.append(a)
@@ -141,8 +141,18 @@ def callback(data):
         vehicles[data.id].draw_path(data.path)
 
 
+def global_state(req):
+    pass
+
+
+def local_state(req):
+    pass
+
+
 def update():
-    rospy.Subscriber("render_push", vehicle_update, callback)
+    rospy.Subscriber("render_push", vehicle_update, vehicle_state)
+    global_service = rospy.Service("global_state", state_global, global_state)
+    local_service = rospy.Service("local_state", state_local, local_state)
     rospy.spin()
 
 
