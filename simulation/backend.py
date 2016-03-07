@@ -2,24 +2,19 @@
 
 import rospy
 import time
+from simulation.msg import *
 import numpy as np
 from random import randint
-from simulation.msg import *
-
 
 rospy.init_node("Backend")
 command = rospy.Publisher("simulation_backend", commands, queue_size=19)
 msg = commands()
-mean_time = 60
-deviation_stay = 30
-deviation_arrival = 20
+time_departure_off = 120
 
-cars_arrival_time = [round(elem, 1) for elem in np.random.normal(mean_time, deviation_arrival, 200)]
-cars_arrival = np.array([sum(cars_arrival_time[0:off]) for off in range(1, len(cars_arrival_time))])
-cars_stay_time = [round(elem, 1) for elem in np.random.normal(mean_time, deviation_stay, 200)]
-cars_stay = np.array(np.sum([sum(cars_stay_time[0:off]) for off in range(1, len(cars_stay_time))], cars_arrival, 0))
-cars_size = [randint(1, 3) for _ in range(0, 200)]
-ids = np.array(xrange(0, 200))
+cars_arrival = np.array([3*abs(8 - round(elem, 1)) for elem in np.random.rayleigh(2, 108)])
+cars_stay = np.array([time_departure_off + 3*round(elem, 1) for elem in np.random.chisquare(3, 108)])
+cars_size = [randint(1, 3) for _ in range(0, 108)]
+ids = np.array(xrange(0, 107))
 
 time_init = time.time()
 
