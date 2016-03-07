@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -67,7 +68,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   std_msgs
+#   sensor_msgs
 # )
 
 ################################################
@@ -102,7 +103,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES emergency
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+#  CATKIN_DEPENDS roscpp rospy sensor_msgs
 #  DEPENDS system_lib
 )
 
@@ -128,16 +129,18 @@ include_directories(
 # add_dependencies(emergency ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(emergency_node src/emergency_node.cpp)
+
+add_executable(emergency src/emergency.cpp)
+
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(emergency_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(emergency_node
-#   ${catkin_LIBRARIES}
-# )
+ target_link_libraries(emergency
+  ${catkin_LIBRARIES}
+ )
 
 #############
 ## Install ##
