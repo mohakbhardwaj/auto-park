@@ -8,7 +8,7 @@ EnvWidth(meters) 42.5m
 Cells(no of cells x no of cells)
 CellsResolution (0.025 x 0.025 (meters) (preferably square and 0.025m))
 StartLocation(meters,x,y)  2.5m, 2m 
-SpotLocations(meters,x,y) 
+SpotLocations(meters,x,y) Spots.txt
 ExitLocation(meters,x,y) 40m, 46m 
 
 Parking Lot Locations (map of x,y,state)
