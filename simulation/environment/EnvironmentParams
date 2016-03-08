@@ -1,9 +1,14 @@
-roboLength(meters)
-roboWidth(meters)
-EnvHeight(meters)
-EnvWidth(meters)
+roboLength(meters)  3m
+roboWidth(meters)   1.5m
+SpotSize (meters)   3.5m x 2.5m
+No Of Spot  104
+LaneWidth 5m
+EnvHeight(meters)   48m
+EnvWidth(meters) 42.5m
 Cells(no of cells x no of cells)
-CellsResolution (height x width (meters) (preferably square and 0.025m))
-StartLocation(meters,x,y)
-SpotLocations(meters,x,y)
-ExitLocation(meters,x,y)
+CellsResolution (0.025 x 0.025 (meters) (preferably square and 0.025m))
+StartLocation(meters,x,y)  2.5m, 2m 
+SpotLocations(meters,x,y) 
+ExitLocation(meters,x,y) 40m, 46m 
+
+Parking Lot Locations (map of x,y,state)
