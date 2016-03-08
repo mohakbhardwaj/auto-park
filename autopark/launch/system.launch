@@ -1,5 +1,5 @@
 <launch>
-  <arg name="suppress" default="1>
+  <arg name="suppress" default="1" />
 	<arg name="nav" default="0" />
 	<arg name="emergency" default="0" />
 	<arg name="usb" default="0" />
