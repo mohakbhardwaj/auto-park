@@ -1,88 +1,40 @@
+from __future__ import division
+
 import cv2
 import numpy as np
 
-im = np.zeros((360, 300, 1), np.uint8)
+im = np.zeros((1920, 1700, 1), np.uint8)
 im[:, :] = 255
 im[:, 0] = 0
-im[:, 299] = 0
+im[:, 1699] = 0
 im[0, :] = 0
-im[359, :] = 0
+im[1919, :] = 0
 
-for i in range(20, 281, 20):
-    im[0:30, i] = 0
-    im[60:120, i] = 0
-    im[150:210, i] = 0
-    im[240:300, i] = 0
-    im[330:360, i] = 0
+for i in xrange(200, 1550, 100):
+    im[0:140, i] = 0
+    im[340:620, i] = 0
+    im[820:1100, i] = 0
+    im[1300:1580, i] = 0
+    im[1780:1920, i] = 0
 
-for i in range(90, 271, 90):
-    im[i, 20:280] = 0
+for i in range(480, 1920, 480):
+    im[i, 200:1500] = 0
 
 cv2.imwrite("map.jpg", im)
 
-print "Format = [x1, y1, x2, y2]"
+with open("Spots.txt", "w") as text_file:
 
-print "Row 1"
+    for i in range(250, 1500, 100):
+        string_spot = str(i/40) + " " + str(70/40)
+        text_file.write("{0} Empty\n".format(string_spot))
 
-ctr = 0
-for i in range(0, 300, 20):
-    ctr += 1
-    coords = [i+1, 1, i + 19, 29]
-    print "Spot ", ctr, ": ", coords
+    for x in range(410, 1800, 480):
+        for y in range(x, x+150, 140):
+            for i in range(250, 1500, 100):
+                string_spot = str(i/40) + " " + str(y/40)
+                text_file.write("{0} Empty\n".format(string_spot))
 
-print "Row 2"
-
-ctr = 0
-for i in range(20, 280, 20):
-    ctr += 1
-    coords = [i+1, 60, i + 19, 89]
-    print "Spot ", ctr, ": ", coords
-
-print "Row 3"
-
-ctr = 0
-for i in range(20, 280, 20):
-    ctr += 1
-    coords = [i+1, 91, i + 19, 119]
-    print "Spot ", ctr, ": ", coords
-
-print "Row 4"
-
-ctr = 0
-for i in range(20, 280, 20):
-    ctr += 1
-    coords = [i+1, 150, i + 19, 179]
-    print "Spot ", ctr, ": ", coords
-
-print "Row 5"
-
-ctr = 0
-for i in range(20, 280, 20):
-    ctr += 1
-    coords = [i+1, 181, i + 19, 209]
-    print "Spot ", ctr, ": ", coords
-
-print "Row 6"
-
-ctr = 0
-for i in range(20, 280, 20):
-    ctr += 1
-    coords = [i+1, 240, i + 19, 269]
-    print "Spot ", ctr, ": ", coords
-
-print "Row 7"
-
-ctr = 0
-for i in range(20, 280, 20):
-    ctr += 1
-    coords = [i+1, 300, i + 19, 329]
-    print "Spot ", ctr, ": ", coords
-
-print "Row 8"
-
-ctr = 0
-for i in range(0, 300, 20):
-    ctr += 1
-    coords = [i+1, 330, i + 19, 359]
-    print "Spot ", ctr, ": ", coords
-
+    for i in range(250, 1500, 100):
+        string_spot = str(i/40) + " " + str(1850/40)
+        text_file.write("{0} Empty\n".format(string_spot))
+        
