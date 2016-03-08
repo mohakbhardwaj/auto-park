@@ -4,16 +4,20 @@ import numpy as np
 from heapq import heappush, heappop, heapify
 import rospy
 from std_msgs.msg import String
+import time
 
-pub = rospy.Publisher('optimal_spot', String, queue_size=10)
+pub1 = rospy.Publisher('destination', String, queue_size=10)
+pub2= rospy.Publisher('opt_spot', String, queue_size=10)
 
 
 
 def callback(data):
-	input = data.data
+	#input = data.data
 	r = rospy.Rate(10)
-	
-	assumed_input = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+	print data.data
+	input = data.data[1:len(data.data)-1]
+	input = input.split(", ")
+        assumed_input = [int(x) for x in input]#[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 	print "Input is :", assumed_input
 
 
@@ -41,6 +45,7 @@ def callback(data):
 
 		spot_val, spot_coordinates, input_idx = curr_spot
 
+
 		if assumed_input[input_idx] == 0:
 			optim_spot = curr_spot
 			found = True
@@ -48,22 +53,15 @@ def callback(data):
 		if len(val_spot) == 0:
 			print "Failed"
 			fail = True
-	pub.publish(repr(optim_spot[1][0]) + " "+repr(optim_spot[1][1]))
+	pub1.publish(repr(optim_spot[1][0]) + " "+repr(optim_spot[1][1]))
+        print optim_spot[2]+1
+        pub2.publish(repr(optim_spot[2]+1))
 	r.sleep()
 		
 if __name__ == '__main__':
 
-
+	time.sleep(10)
+	print "Done sleeping"
 	rospy.init_node('multi_agent')
-	rospy.Subscriber("spot_info", String, callback)
+	rospy.Subscriber("bs", String, callback)
 	rospy.spin()
-
-
-
-
-	
-
-
-	
-	
-
