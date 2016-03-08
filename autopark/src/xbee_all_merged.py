@@ -196,10 +196,10 @@ def callback_master(data):
             msg=list_ui()
             msg.status='return'
             msg.vcl_id=vcl_id
-            msg.spot_id=25
+            msg.spot_id=vcl_spot     #changed from 25
             pub1.publish(msg)
         else:
-            print "Sending UPDATE message b/c ROS return received"
+            print "Sending UPDATE message b/c ROS   received"
             mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
             ser.write(mymsg)
 
@@ -425,7 +425,7 @@ def callback():
                     elif temp_spot>0 and temp_spot<25 and new_spot>0 and new_spot<25:
                         msg.status='parked'
                     else:
-                        msg.status='returning'
+                        msg.status='return'
 
                     msg.vcl_id=rec_msg.vcl_id
                     msg.spot_id=new_spot

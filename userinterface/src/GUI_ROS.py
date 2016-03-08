@@ -94,7 +94,7 @@ def draw_virtual_vehicle(event, x, y, flag, param):
                         id_vv = 1
                         while True:
                             if id_vv in ids:
-                            	i += 1
+                            	id_vv += 1
                             else:
                             	break
                         msg.vcl_id = id_vv
@@ -123,9 +123,9 @@ def draw_virtual_vehicle(event, x, y, flag, param):
                     	virtualcount -= 1
 	                msg.spot_id = 25
 	                pub1.publish(msg)
-			pub2.publish(str(current_state[2*ind])+", "+str(25))
+			pub2.publish(str(msg.vcl_id)+", "+str(25))
 			time.sleep(2)
-			pub2.publish(str(current_state[2*ind])+", "+str(0))
+			pub2.publish(str(msg.vcl_id)+", "+str(0))
 		    else:
 		    	popup("Error: Can't remove physical vehicles")
                 except ValueError:
@@ -196,19 +196,19 @@ def interpret(data):
     x_id = data.vcl_id
     x_pos = data.spot_id
     x_status = data.status
-    if x_id in current_state:
+    if x_id in current_state[0:-1:2]:
         pop_i = current_state.index(x_id)
         current_state.pop(pop_i)
-        current_state.pop(pop_i)
+        temp_spot = current_state.pop(pop_i)
     if x_status == "in_queue" or x_status == "parked":
         current_state.append(x_id)
         current_state.append(x_pos)
     elif x_status == "parking":
         current_state.append(x_id)
         current_state.append([0, x_pos])
-    elif x_status == "returning":
+    elif x_status == "return":
         current_state.append(x_id)
-        current_state.append([25, x_pos])
+        current_state.append([25, temp_spot])
     a = copy.copy(img)
     ids = current_state[0:len(current_state):2]
     state = current_state[1:len(current_state):2]
