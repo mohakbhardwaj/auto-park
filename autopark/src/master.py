@@ -26,7 +26,7 @@ def action(data):
         oculusprimesocket.sendString("strobeflash on 1000 30") # on for 1000 ms at 30% intensity, indicates command was received
         time.sleep(10)
         # while status != "reached": # wait until oculus has reached destination
-        status = rospy.wait_for_msg("destination", String).data
+        status = rospy.wait_for_message("destination", String).data
         #    time.sleep(5)
         blue_push.publish(str(int(cmd) + 1)) # send 3 if parked, 5 if returned
 
