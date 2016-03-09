@@ -6,7 +6,7 @@ from collections import deque
 import time
 import oculusprimesocket
 
-
+rospy.init_node("master_autopark")
 blue_push = rospy.Publisher("blue_push", String, queue_size=5)
 serial_push = rospy.Publisher("xbee_update", String, queue_size=2)
 last_command = deque(maxlen=2) # only remember the last command and the current one
