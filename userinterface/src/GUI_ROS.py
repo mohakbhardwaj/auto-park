@@ -9,6 +9,7 @@ from std_msgs.msg import String
 import rospy
 from Tkinter import *
 import tkMessageBox
+import os
 
 # initialize window
 window = Tk()
@@ -17,7 +18,8 @@ window.wm_withdraw()
 # initialize ros node, template image and other constants
 t = time.time()
 size = 66
-img = cv2.imread("demo_template.jpg")
+impath = os.path.join(os.path.dirname(__file__), 'demo_template.jpg')
+img = cv2.imread(impath)
 a = img
 spot_id = {1: (175, 260), 2: (241, 260), 3: (307, 260), 4: (373, 260),
            5: (439, 260), 6: (505, 260), 7: (175, 326), 8: (241, 326),
