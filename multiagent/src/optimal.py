@@ -6,7 +6,7 @@ import rospy
 from std_msgs.msg import String
 import time
 
-pub1 = rospy.Publisher('destination', String, queue_size=10)
+pub1 = rospy.Publisher('destination', String, queue_size=10, latch=True)
 pub2= rospy.Publisher('opt_spot', String, queue_size=10)
 
 
@@ -53,6 +53,7 @@ def callback(data):
 		if len(val_spot) == 0:
 			print "Failed"
 			fail = True
+	time.sleep(1)
 	pub1.publish(repr(optim_spot[1][0]) + " "+repr(optim_spot[1][1]))
         print optim_spot[2]+1
         pub2.publish(repr(optim_spot[2]+1))
@@ -60,7 +61,7 @@ def callback(data):
 		
 if __name__ == '__main__':
 
-	time.sleep(10)
+	time.sleep(5)
 	print "Done sleeping"
 	rospy.init_node('multi_agent')
 	rospy.Subscriber("bs", String, callback)
