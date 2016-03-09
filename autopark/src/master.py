@@ -19,7 +19,7 @@ def action(data):
     global last_command, status
     #  if the last message is different from the current message received from app
     cmd = data.data
-    if cmd != last_command(-1): # if the last message is different from the current one
+    if cmd != last_command[-1]: # if the last message is different from the current one
         last_command.append(cmd) # store command
         status = "ongoing" # not reached
         serial_push.publish(apptoxbee[cmd]) # send request for XBee
