@@ -20,7 +20,7 @@ from autopark.msg import list_ui
 rospy.init_node("Xbee")
 pub1 = rospy.Publisher("ui_update", list_ui, queue_size=10)
 pub2 = rospy.Publisher("bs", String, queue_size=10) #binary spots to planner
-pub3 = rospy.Publisher("destination", String, queue_size=10) # exit coordinates to navigation
+pub3 = rospy.Publisher("destination", String, queue_size=10, latch=True) # exit coordinates to navigation
 
 
 def signal_handler(signal, frame):
