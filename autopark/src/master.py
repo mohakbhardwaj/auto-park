@@ -24,7 +24,7 @@ def action(data):
         status = "ongoing" # not reached
         serial_push.publish(apptoxbee[cmd]) # send request for XBee
         oculusprimesocket.sendString("strobeflash on 1000 30") # on for 1000 ms at 30% intensity, indicates command was received
-        time.sleep(10)
+        #time.sleep(10)
         # while status != "reached": # wait until oculus has reached destination
         status = rospy.wait_for_message("destination", String).data
         #    time.sleep(5)
