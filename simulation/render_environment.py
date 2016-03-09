@@ -53,13 +53,13 @@ class Car:
         self.interpolated_path = []
         self.vehicle_marker.id = vehicle_id
         self.destination_marker.id = vehicle_id
-        self.path_marker = vehicle_id
+        self.path_marker.id = vehicle_id
         self.vehicle_marker.color.r, self.vehicle_marker.color.g, self.vehicle_marker.color.b = self.color
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
         self.path_marker.color.r, self.path_marker.color.g, self.path_marker.color.b = self.color
         self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = [size, 0.4, 0.5]
         self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [size, size, 0.1]
-        self.destination_marker.scale.x = 1
+        self.path_marker.scale.x = 1
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [0, 0, 0, 1]
         self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [0, 0, 0, 1]
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y, self.vehicle_marker.pose.position.z = [0, 0, 0]
@@ -79,7 +79,7 @@ class Car:
         else:
             self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
             self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[self.path_index][2])
-            self.vehicle_path.points = self.vehicle_path.points[int(self.path_index/path_resolution):-1]
+            self.path_marker.points = self.path_marker.points[int(self.path_index/path_resolution):-1]
 
     def interpolate(self):
         # add intermediate steps for smooth motion
@@ -102,12 +102,14 @@ class Car:
         self.motion_start = time.time()
         self.interpolate()
         self.state = state
-        pts = Point()
-        pts.z = 0
-        for i in range(0, len(self.interpolated_path), path_resolution):
-            pts.x = self.interpolated_path[i][0]
-            pts.y = self.interpolated_path[i][1]
-            self.vehicle_path.points.append(pts)
+        draw_path_index = range(0, len(self.interpolated_path), path_resolution)
+        pts_index = [0] * len(draw_path_index)
+        for i in range(0, len(draw_path_index)):
+            pts_index[i] = Point()
+            pts_index[i].z = 0
+            pts_index[i].x = self.interpolated_path[i][0]
+            pts_index[i].y = self.interpolated_path[i][1]
+            self.path_marker.points.append(pts_index[i])
 
     def clear_path(self):
         # clear the path of the vehicle
