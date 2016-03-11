@@ -3,8 +3,7 @@
 import oculusprimesocket
 import time
 import rospy
-from locomotion_waypoint.msgs import waypoint
-from std_msgs.msg import String
+from std_msgs.msg import String, Int64
 from threading import Thread
 
 # intialize node, publisher and connect with Telnet
@@ -40,7 +39,7 @@ def emergency_stop(data):
 
 # start the Subscriber threads
 def action():
-    rospy.Subscriber("multi_agent_destination", waypoint, loco)
+    rospy.Subscriber("destination", String, loco)
     rospy.Subscriber("master_control", Int64, emergency_stop)
     rospy.spin()
 
