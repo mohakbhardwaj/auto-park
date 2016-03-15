@@ -446,9 +446,8 @@ def callback():
 
                 print "updated dict"
                 print vcl_dict
-                
-                if len(vcl_dict.keys()) > 0:
-                    liq_id = max(vcl_dict.keys())
+
+                liq_id = max(vcl_dict.keys())
 
                 if isUI == True:
                     sendUIUpdate('returned', rec_msg.vcl_id, 0)
