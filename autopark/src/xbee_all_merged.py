@@ -187,7 +187,7 @@ def callback_master(data):
 
         print "sending exit coordinates to nav"
 
-        pub3.publish('exit coordinates')
+        pub3.publish('25')
 
         vcl_dict[vcl_id]=25
         vcl_spot=25
