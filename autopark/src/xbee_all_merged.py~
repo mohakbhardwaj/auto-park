@@ -10,13 +10,12 @@ import numpy as np
 import hashlib
 import sys
 from std_msgs.msg import String
-from autopark.msg import list_ui
 from threading import Thread
-from heapq import heappush, heappop, heapify
 from protocolwrapper import (
     ProtocolWrapper, ProtocolStatus)
 from myformat import (
     message_format, message_crc, Container)
+from autopark.msg import list_ui
 
 PROTOCOL_HEADER = '$'
 PROTOCOL_FOOTER = '$'
@@ -28,15 +27,22 @@ global liq_id
 vcl_dict = {}
 hello_dict = {}
 vcl_spot = 0 #receive from planner
-if len(sys.argv) > 1:
-    if int(sys.argv[1]) == 1:
-        isUI = True
+if int(sys.argv[1]) == 1:
+    isUI = True
 else:
     isUI = False
 
 rospy.init_node("Xbee")
 pub1 = rospy.Publisher("ui_update", list_ui, queue_size = 10)
-pub2 = rospy.Publisher("destination", String, queue_size = 10, latch = True) # exit coordinates to navigation
+pub2 = rospy.Publisher("bs", String, queue_size = 10) #binary spots to planner
+pub3 = rospy.Publisher("destination", String, queue_size = 10, latch = True) # exit coordinates to navigation
+
+# define ctrl+c and ctrl+z as signals to quit
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTSTP, signal_handler)
+
+t1 = Thread(target = callback)
+t2 = Thread(target = listen)
 
 
 # send GOODBYE to other XBees when ctrl+c or ctrl+z heard, then shut down
@@ -45,14 +51,14 @@ def signal_handler(signal, frame):
     mymsg = build_message_to_send(vcl_id,'GOODBYE',{0:0})
     ser.write(mymsg)
     if isUI:
-        sendUIUpdate('returned', vcl_id, 25)
+        msg = list_ui()
+        msg.status = 'returned'
+        msg.vcl_id = vcl_id
+        msg.spot_id = 25
+        pub1.publish(msg) 
     time.sleep(1)
     os.kill(os.getpid(), 9)
 
-
-# define ctrl+c and ctrl+z as signals to quit
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTSTP, signal_handler)
 
 # connects to other XBees
 def connect():
@@ -143,19 +149,11 @@ def listToDict(data):
     vcl_dict = {data[i]: data[i+1] for i in range(0, len(data), 2)}
     return vcl_dict
 
-# sends update to UI
-def sendUIUpdate(stat, vcl, spot):
-    msg = list_ui()
-    msg.status = stat
-    msg.vcl_id = vcl
-    msg.spot_id = spot
-    pub1.publish(msg)
-
 
 # creates listeners to master, planner, and UI
 def listen():
     rospy.Subscriber("xbee_update", String, callback_master)
-    #rospy.Subscriber("opt_spot", String, callback_planner)
+    rospy.Subscriber("opt_spot", String, callback_planner)
     rospy.Subscriber("vv_update", String, callback_UI)
     rospy.spin()
 
@@ -177,73 +175,26 @@ def callback_master(data):
             if val!= 25 and val!= 0:
                 bs[val-1] = 1
 
-        print "the bs:"
+        print "sending to bs"
         print bs
-
-        #start planner
-
-        val_spot = [(5, (2, 3), 0),  (6, (2, 4), 1), (7, (2, 5), 2), (8, (2, 6), 3), (9, (2, 7), 4) , (10, (2, 8), 5), (9, (4, 3), 6), (10, (4, 4), 7), (11, (4, 5), 8), (12, (4, 6), 9), (13, (4, 7), 10), (14, (4, 8), 11), (10, (7, 3), 12),(11, (7, 4), 13), (12, (7, 5), 14), (13, (7, 6), 15), (14, (7, 7), 16) ,(15, (7, 8), 17), (14, (9, 3), 18), (15, (9, 4), 19), (16, (9, 5), 20), (17, (9, 6), 21), (18, (9, 7), 22), (19, (9, 8), 23)]
-
-
-        heapify(val_spot)
-        found = False
-        fail = False
-        while found == False and fail == False:
-                curr_spot = heappop(val_spot)
-
-                spot_val, spot_coordinates, input_idx = curr_spot
-
-                if bs[input_idx] == 0:
-                        optim_spot = curr_spot
-                        found = True
-                        print "Most Optimal Spot Coordinates are :",  optim_spot[1]
-                if len(val_spot) == 0:
-                        print "Failed"
-                        fail = True
-        time.sleep(1)
-        # destination coordinates
-        #print 'dest coordinates'
-        #print optim_spot[1][0] + " "+optim_spot[1][1]
-        #pub2.publish(repr(optim_spot[1][0]) + " "+repr(optim_spot[1][1]))
-        print 'opt spot ID'
-        print optim_spot[2]+1
-        print pub2.publish(repr(optim_spot[2]+1))
-
-        #end planner
-
-        #start callback
-
-        print "original dict"
-        print vcl_dict
-
-        vcl_spot = optim_spot[2]+1
-        vcl_dict[vcl_id] = vcl_spot
-
-        print "updated dict"
-        print vcl_dict
-
-        if isUI:
-            sendUIUpdate('parking', vcl_id, vcl_spot)
-            print 'sending selected spot to UI'
-
-        # send update to other XBees
-        print "Sending UPDATE because planner spot was selected and received"
-        mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
-        ser.write(mymsg)
-
-        # end callback
+        pub2.publish(str(bs))
 
     # return master
     elif data.data == 'return':
         print "heard return"
-        print "sending exit ID (25) to nav"
-        pub2.publish('25')
+        print "sending exit coordinates to nav"
+        pub3.publish('exit coordinates')
 
         vcl_dict[vcl_id] = 25
         vcl_spot = 25
         if isUI:
-            print "sending returning to UI"
-            sendUIUpdate('returning', vcl_id, vcl_spot)
+            print "sending return to UI"
+            msg = list_ui()
+            #msg.status = 'return'
+            msg.status = 'returning'
+            msg.vcl_id = vcl_id
+            msg.spot_id = vcl_spot     #changed from 25
+            pub1.publish(msg)
         else:
             print "Sending UPDATE message b/c ROS msg received"
             mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
@@ -255,7 +206,11 @@ def callback_master(data):
 
         if isUI:
             print "sending parked to UI"
-            sendUIUpdate('parked', vcl_id, vcl_spot)
+            msg = list_ui()
+            msg.status = 'parked'
+            msg.vcl_id = vcl_id
+            msg.spot_id = vcl_spot
+            pub1.publish(msg)
         else:
             print "Sending PARKED message b/c ROS parked received"
             mymsg = build_message_to_send(vcl_id, 'PARKED', {vcl_id:vcl_spot})
@@ -267,7 +222,11 @@ def callback_master(data):
 
         if isUI:
             print "sending returned to UI"
-            sendUIUpdate('returned', vcl_id, 25)
+            msg = list_ui()
+            msg.status = 'returned'
+            msg.vcl_id = vcl_id
+            msg.spot_id = 25
+            pub1.publish(msg)
         else:
             print "Sending GOODBYE message b/c ROS returned received"
             mymsg = build_message_to_send(vcl_id, 'GOODBYE', {0:0})
@@ -317,6 +276,42 @@ def callback_UI(data):
     ser.write(mymsg)
 
 
+# when spot chosen from planner, update local dict and send update to other XBees and UI
+def callback_planner(data):
+    #assuming incoming data is string containing spot chosen
+    global vcl_dict, vcl_id, vcl_spot, isUI
+
+    print "heard something from planner:"
+    print data.data
+
+    temp = data.data
+    temp = int(temp)
+
+    print "this is the spot i have chosen"
+    print temp
+    print "original dict"
+    print vcl_dict
+
+    vcl_dict[vcl_id] = temp
+    vcl_spot = temp
+
+    print "updated dict"
+    print vcl_dict
+
+    if isUI:
+        msg = list_ui()
+        msg.status = 'parking'
+        msg.vcl_id = vcl_id
+        msg.spot_id = vcl_spot
+        pub1.publish(msg)
+        print 'sending selected spot to UI'
+
+    # send update to other XBees
+    print "Sending UPDATE because planner spot was selected and received"
+    mymsg = build_message_to_send(vcl_id, 'UPDATE', {vcl_id:vcl_spot})
+    ser.write(mymsg)
+
+
 # messages from other XBees
 def callback():
     print "entering callback"
@@ -362,11 +357,14 @@ def callback():
                         for key, val in vcl_dict.iteritems():
                             msg = list_ui()
                             if val == 0:
-                                sendUIUpdate('in_queue', key, val)
+                                msg.status = 'in_queue'
                             elif val == 25:
-                                sendUIUpdate('returning', key, val)
+                                msg.status = 'returning'
                             else:
-                                sendUIUpdate('parked', key, val)
+                                msg.status = 'parked'
+                            msg.vcl_id = key
+                            msg.spot_id = val
+                            pub1.publish(msg)
 
             # HELLO XBEE
             if rec_msg.message_type == 'HELLO':
@@ -416,14 +414,20 @@ def callback():
                 new_spot = vcl_dict[rec_msg.vcl_id]
                 liq_id = max(vcl_dict.keys())
                 if isUI == True:
+                    msg = list_ui()
                     if temp_spot == 0 and new_spot == 0:
-                        sendUIUpdate('in_queue', rec_msg.vcl_id, new_spot)
+                        msg.status = 'in_queue'
                     elif temp_spot == 0 and new_spot>0 and new_spot <25:
-                        sendUIUpdate('parking', rec_msg.vcl_id, new_spot)
+                        msg.status = 'parking'
                     elif temp_spot>0 and temp_spot<25 and new_spot>0 and new_spot<25:
-                        sendUIUpdate('parked', rec_msg.vcl_id, new_spot)
+                        msg.status = 'parked'
                     else:
-                        sendUIUpdate('returned', rec_msg.vcl_id, new_spot)
+                        #msg.status = 'return'
+                        msg.status = 'returned'
+
+                    msg.vcl_id = rec_msg.vcl_id
+                    msg.spot_id = new_spot
+                    pub1.publish(msg)
                     print 'sending selected spot to UI'
     
             # PARKED XBEE
@@ -431,7 +435,11 @@ def callback():
                 print "I received PARKED from ", rec_msg.vcl_id
                 vcl_dict[rec_msg.vcl_id] = rec_msg.data[rec_msg.vcl_id]
                 if isUI == True:
-                    sendUIUpdate('parked', rec_msg.vcl_id, vcl_dict[rec_msg.vcl_id])
+                    msg = list_ui()
+                    msg.status = 'parked'
+                    msg.vcl_id = rec_msg.vcl_id
+                    msg.spot_id = vcl_dict[rec_msg.vcl_id]
+                    pub1.publish(msg)
                     print 'sending PARKED status to UI'
             
             # GOODBYE XBEE
@@ -450,14 +458,15 @@ def callback():
                 liq_id = max(vcl_dict.keys())
 
                 if isUI == True:
-                    sendUIUpdate('returned', rec_msg.vcl_id, 0)
+                    msg = list_ui()
+                    msg.status = 'returned'
+                    msg.vcl_id = rec_msg.vcl_id
+                    msg.spot_id = 0
+                    pub1.publish(msg)
                     print 'sending GOODBYE status to UI'
 
 
 # main loop
-t1 = Thread(target = callback)
-t2 = Thread(target = listen)
-
 while not rospy.is_shutdown():
     connect()
     global liq_id, vcl_id, hellocount
@@ -465,7 +474,7 @@ while not rospy.is_shutdown():
     vcl_id = 0
     hellocount = 0
     
-    time.sleep(5)
+    time.sleep(10)
     t1.start()
 
     while vcl_id == 0 and hellocount<= 2:
@@ -476,7 +485,11 @@ while not rospy.is_shutdown():
             print "I'm 5 now"
             # Publish existence to UI
             if isUI:
-                sendUIUpdate('in_queue', vcl_id, vcl_spot)
+                msg = list_ui()
+                msg.status = 'in_queue'
+                msg.vcl_id = vcl_id
+                msg.spot_id = vcl_spot
+                pub1.publish(msg)
                 print "I'm the UI"
         else:
             hellocount = hellocount+1
@@ -488,3 +501,4 @@ while not rospy.is_shutdown():
     
     t2.start()
     signal.pause()
+

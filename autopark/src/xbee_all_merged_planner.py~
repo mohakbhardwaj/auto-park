@@ -29,6 +29,9 @@ vcl_dict = {}
 hello_dict = {}
 vcl_spot = 0 #receive from planner
 if len(sys.argv) > 1:
+    print len(sys.argv)
+    for arg in sys.argv:
+        print arg
     if int(sys.argv[1]) == 1:
         isUI = True
 else:
