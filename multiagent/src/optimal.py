@@ -54,8 +54,9 @@ def callback(data):
 			print "Failed"
 			fail = True
 	time.sleep(1)
-	pub1.publish(repr(optim_spot[1][0]) + " "+repr(optim_spot[1][1]))
+	#pub1.publish(repr(optim_spot[1][0]) + " "+repr(optim_spot[1][1]))
         print optim_spot[2]+1
+        pub1.publish(repr(optim_spot[2]+1))
         pub2.publish(repr(optim_spot[2]+1))
 	r.sleep()
 		
