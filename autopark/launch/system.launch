@@ -4,13 +4,13 @@
 	<arg name="emergency" default="0" />
 	<arg name="usb" default="0" />
 	<group if="$(arg suppress)">
-		<node name="master" pkg="autopark" type="xbee_all_merged.py" />
+		<node name="master" pkg="autopark" type="master.py" />
 		<node name="xbee_all_merged" pkg="autopark" type="xbee_all_merged.py" args="0"/>
 		<node name="bluetooth_comm" pkg="bluetooth" type="bluetooth_comm.py" />
 		<node name="optimal" pkg="multiagent" type="optimal.py" />
 	</group>
 	<group unless="$(arg suppress)">
-		<node name="master" pkg="autopark" type="xbee_all_merged.py" />
+		<node name="master" pkg="autopark" type="master.py" />
 		<node name="xbee_all_merged" pkg="autopark" type="xbee_all_merged.py" args="0" output="screen" />
 		<node name="bluetooth_comm" pkg="bluetooth" type="bluetooth_comm.py" output="screen"/>
 		<node name="optimal" pkg="multiagent" type="optimal.py" output="screen"/>
