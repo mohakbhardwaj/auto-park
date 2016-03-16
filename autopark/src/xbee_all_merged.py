@@ -31,6 +31,8 @@ vcl_spot = 0 #receive from planner
 if len(sys.argv) > 1:
     if int(sys.argv[1]) == 1:
         isUI = True
+    else:
+        isUI = False
 else:
     isUI = False
 
@@ -42,6 +44,7 @@ pub2 = rospy.Publisher("destination", String, queue_size = 10, latch = True) # e
 # send GOODBYE to other XBees when ctrl+c or ctrl+z heard, then shut down
 def signal_handler(signal, frame):
     print("I sent GOODBYE")
+    print("XBee closing gracefully")
     mymsg = build_message_to_send(vcl_id,'GOODBYE',{0:0})
     ser.write(mymsg)
     if isUI:
