@@ -4,7 +4,6 @@ import rospy
 import time
 from simulation.msg import path_id
 import numpy as np
-from random import randint
 from localplanner.srv import optimPath
 from geometry_msgs.msg import PoseStamped
 import tf
@@ -12,12 +11,14 @@ from gplanner.srv import OptimalSpotGenerator
 
 
 rospy.init_node("Backend")
-command = rospy.Publisher("simulation_backend", path_id, queue_size=19)
+command = rospy.Publisher("simulation_backend", path_id, queue_size=0)
 msg = path_id()
 time_departure_off = 120
 
-cars_arrival = [3*abs(8 - round(elem, 1)) for elem in np.random.rayleigh(2, 108)]
-cars_stay = [time_departure_off + 3*round(elem, 1) for elem in np.random.chisquare(3, 108)]
+number_of_vehicles = 10
+
+cars_arrival = [3*abs(8 - round(elem, 1)) for elem in np.random.rayleigh(2, number_of_vehicles)]
+cars_stay = [time_departure_off + 3*round(elem, 1) for elem in np.random.chisquare(3, number_of_vehicles)]
 
 time_init = time.time()
 
@@ -51,7 +52,7 @@ bogus.pose.orientation.x, bogus.pose.orientation.y, bogus.pose.orientation.z, bo
 while True:
     time.sleep(0.5)
     time_off = time.time() - time_init
-    for i in range(1, len(cars_arrival)):
+    for i in range(0, len(cars_arrival)):
         if time_off > cars_arrival[i]:
             cars_arrival[i] = 99999
             msg.state = "arrive"

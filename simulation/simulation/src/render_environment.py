@@ -12,6 +12,7 @@ from simulation.msg import path_id
 # from simulation.srv import *
 from geometry_msgs.msg import Point
 from std_msgs.msg import ColorRGBA
+from copy import deepcopy
 
 rospy.init_node("Render")
 rviz = rospy.Publisher("visualization"
@@ -30,10 +31,14 @@ class Car:
 
     def __init__(self, vehicle_id, path):
         # set the markers associated with this vehicle
+        self.initiate = 0
         self.vehicle_marker = Marker()
+        self.vehicle_marker.header.frame_id = 'map'
         self.vehicle_marker.action = Marker.ADD
         self.destination_marker = Marker()
+        self.destination_marker.header.frame_id = 'map'
         self.path_marker = Marker()
+        self.path_marker.header.frame_id = 'map'
         self.path_color = ColorRGBA()
         self.vehicle_marker.type = Marker.CUBE
         self.destination_marker.type = Marker.CYLINDER
@@ -47,12 +52,9 @@ class Car:
         self.path_color.a = 1
         self.color = [round(random.random(), 2) for _ in range(0, 3)]
         self.id = vehicle_id
-        self.vehicle_path = []
-        self.interpolated_path = []
         self.draw_path(path, self.state)
-        self.motion_start = 0
         self.motion_current = current_time
-        self.motion = 0
+        self.motion = 1
         self.path_index = 0
         self.vehicle_marker.id = vehicle_id
         self.destination_marker.id = vehicle_id
@@ -65,8 +67,9 @@ class Car:
         self.path_marker.scale.x = 1
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [0, 0, 0, 1]
         self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [0, 0, 0, 1]
-        self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y, self.vehicle_marker.pose.position.z = [0, 0, 0]
-        self.destination_marker.pose.position.x, self.destination_marker.pose.position.y, self.destination_marker.pose.position.z = [0, 0, 0]
+        self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y, self.vehicle_marker.pose.position.z = [2.5, 2, 0]
+        self.destination_marker.pose.position.z
+        self.initiate = 1
 
     def quatfromang(self, yaw):
         # get quaternion for euler angles
@@ -78,7 +81,9 @@ class Car:
 
     def move(self):
         # update the state of the vehicle
-        self.path_index = int((self.motion_current[0] - self.motion_start)/0.1)
+        self.path_index = int(self.motion_current[0] - self.motion_start) * 5
+        print self.motion_current[0], self.motion_start
+        print self.path_index
         if self.path_index >= len(self.interpolated_path):
             self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[-1][0:2]
             self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[-1][2])
@@ -87,18 +92,18 @@ class Car:
             self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
             self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[self.path_index][2])
             self.path_marker.points = self.points_trace[int(self.path_index/path_resolution):-1]
-            self.path_marker.color = self.color_trace[int(self.path_index/path_resolution):-1]
+            self.path_marker.colors = self.color_trace[int(self.path_index/path_resolution):-1]
 
     def interpolate(self):
         # add intermediate steps for smooth motion
         for i in range(0, len(self.vehicle_path)-1):
             if self.vehicle_path[i][2] != self.vehicle_path[i+1][2]:
                 steps = int(np.linalg.norm(np.array(self.vehicle_path[i+1][0:2]) - np.array(self.vehicle_path[i][0:2]))/speed)
-                x = [self.vehicle_path[j][0] for j in range(i-1, i+3)]
-                y = [self.vehicle_path[j][1] for j in range(i-1, i+3)]
-                z = np.polyfit(x, y, 3)
+                x = [self.vehicle_path[j][0] for j in range(max(i-3, 0), min(i+3, len(self.vehicle_path)-1))]
+                y = [self.vehicle_path[j][1] for j in range(max(i-3, 0), min(i+3, len(self.vehicle_path)-1))]
+                z = np.polyfit(x, y, 2)
                 f = np.poly1d(z)
-                xspan = np.linspace(x[0], x[-1], steps)
+                xspan = np.linspace(self.vehicle_path[i][0], self.vehicle_path[i+1][0], steps)
                 yspan = f(xspan)
                 heading = [round(val, 2) for val in np.linspace(self.vehicle_path[i][2], self.vehicle_path[i+1][2], steps)]
                 self.interpolated_path += zip(xspan, yspan, heading)
@@ -111,23 +116,27 @@ class Car:
 
     def draw_path(self, path, state):
         # draw the path of the vehicle on RViz
+        self.vehicle_path = []
+        self.interpolated_path = []
         for i in range(0, len(path)):
             self.vehicle_path.append([path[i].pose.position.x, path[i].pose.position.y, self.angfromquat(path[i].pose.orientation)])
         self.destination_marker.action = Marker.ADD
+        self.destination_marker.pose.position.x, self.destination_marker.pose.position.y = self.vehicle_path[-1][0:2]
         self.path_marker.action = Marker.ADD
         self.motion = 1
         self.motion_start = time.time()
         self.interpolate()
         self.state = state
+        pts = [0] * len(self.interpolated_path)
         for i in range(0, len(self.interpolated_path), path_resolution):
-            pts = Point()
-            pts.z = 0
-            pts.x = self.interpolated_path[i][0]
-            pts.y = self.interpolated_path[i][1]
-            self.path_marker.points.append(pts)
+            pts[i] = Point()
+            pts[i].z = 0
+            pts[i].x = self.interpolated_path[i][0]
+            pts[i].y = self.interpolated_path[i][1]
+            self.path_marker.points.append(pts[i])
             self.path_marker.colors.append(self.path_color)
         self.points_trace = self.path_marker.points
-        self.color_trace = self.path_marker.color
+        self.color_trace = self.path_marker.colors
 
     def clear_path(self):
         # clear the path of the vehicle
@@ -159,7 +168,7 @@ def vehicle_state(data):
         a = Car(data.id, data.result)
         vehicles.append(a)
     elif data.state == "return":
-        vehicles[data.id].draw_path(data.path)
+        vehicles[data.id].draw_path(data.result, data.state)
 
 
 def global_state(req):
@@ -185,13 +194,14 @@ def draw():
         time.sleep(0.1)
         current_time[0] = time.time()
         for car in vehicles:
-            print car.motion
-            if car.motion:
+            if car.motion and car.initiate:
                 car.move()
-                print "?"
                 rviz.publish(car.path_marker)
+                time.sleep(0.01)
                 rviz.publish(car.vehicle_marker)
+                time.sleep(0.01)
                 rviz.publish(car.destination_marker)
+                time.sleep(0.01)
 
 access = Thread(target=update)
 render = Thread(target=draw)
