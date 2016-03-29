@@ -2,7 +2,7 @@
 
 import rospy
 import time
-from ros_assignment.msg import path_id
+from simulation.msg import path_id
 import numpy as np
 from random import randint
 from localplanner.srv import optimPath
@@ -16,10 +16,8 @@ command = rospy.Publisher("simulation_backend", path_id, queue_size=19)
 msg = path_id()
 time_departure_off = 120
 
-cars_arrival = np.array([3*abs(8 - round(elem, 1)) for elem in np.random.rayleigh(2, 108)])
-cars_stay = np.array([time_departure_off + 3*round(elem, 1) for elem in np.random.chisquare(3, 108)])
-cars_size = [randint(1, 3) for _ in range(0, 108)]
-ids = np.array(xrange(0, 107))
+cars_arrival = [3*abs(8 - round(elem, 1)) for elem in np.random.rayleigh(2, 108)]
+cars_stay = [time_departure_off + 3*round(elem, 1) for elem in np.random.chisquare(3, 108)]
 
 time_init = time.time()
 
@@ -50,29 +48,25 @@ bogus.pose.position.y = 26
 bogus.pose.position.z = 0
 bogus.pose.orientation.x, bogus.pose.orientation.y, bogus.pose.orientation.z, bogus.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, 0)
 
-
 while True:
-    time.sleep(0.1)
+    time.sleep(0.5)
     time_off = time.time() - time_init
-    remove_index = []
-    for i in range(0, len(cars_arrival)):
+    for i in range(1, len(cars_arrival)):
         if time_off > cars_arrival[i]:
+            cars_arrival[i] = 99999
             msg.state = "arrive"
-            msg.id = ids[i]
-            print "Publish a car"
+            msg.id = i
+            print "Publish car #", i
             # spot = fetch_spot(True)
             # parking_dict[ids[i]] = spot.data
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             command.publish(msg)
         elif time_off > cars_stay[i]:
+            cars_stay[i] = 99999
             msg.state = "return"
-            msg.id = ids[i]
-            print "Remove a car"
+            msg.id = i
+            print "Remove car#", i
             resp = fetch_path([bogus, exitc])
             msg.result = resp.path
             command.publish(msg)
-            remove_index.append(i)
-    ids = np.delete(ids, remove_index, None)
-    cars_arrival = np.delete(cars_arrival, remove_index, None)
-    cars_stay = np.delete(cars_stay, remove_index, None)
