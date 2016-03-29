@@ -1,0 +1,6 @@
+bool request
+#lot state
+#motion segments
+---
+int32[] spots
+#geometry_msgs/PoseStamped[] finalSpots
