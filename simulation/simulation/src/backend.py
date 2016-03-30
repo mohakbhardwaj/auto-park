@@ -58,8 +58,10 @@ while True:
             msg.state = "arrive"
             msg.id = i
             print "Publish car #", i
-            # spot = fetch_spot(True)
-            # parking_dict[ids[i]] = spot.data
+            spot = fetch_spot(True)
+            parking_dict[ids[i]] = spot.data
+            print spot," Spot"
+
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             command.publish(msg)
