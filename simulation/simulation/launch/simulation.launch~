@@ -1,0 +1,8 @@
+<launch>
+	<node name="rviz" pkg = "rviz" type="rviz" output="screen" />
+	<node name="backend" pkg = "simulation" type="backend.py" output="screen" />
+	<node name="render_environment" pkg = "simulation" type="render_environment.py" output="screen" />
+	<node name="statespace_planner" pkg = "localplanner" type="statespace_planner" output="screen" />
+	<node name="planner_node" pkg = "gplanner" type="planner_node" output="screen" />
+	<node name="map_server" pkg = "map_server" type="map_server" args="$(find simulation)/src/res/map.yaml" output="screen" />
+</launch>

@@ -1,0 +1,6 @@
+#request fields
+bool request
+---
+#response fields
+int32[] segments
+int32[] spots_state

@@ -6,7 +6,6 @@ project(simulation)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
-  roscpp
   rospy
   std_msgs
   message_generation
@@ -53,11 +52,12 @@ find_package(catkin REQUIRED COMPONENTS
  )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+ add_service_files(
+   FILES
+   global_request_backend.srv
+   global_request_render.srv
+   local_request.srv
+ )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
