@@ -12,11 +12,21 @@ from gplanner.srv import OptimalSpotGenerator
 from visualization_msgs.msg import *
 from threading import Thread
 from random import randint
+import rosnode
+from random import random
 
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
 rospy.init_node("Backend")
 command = rospy.Publisher("simulation_backend", path_id, queue_size=0)
 
+x = 0
+
+while x == 0:
+    active_nodes = rosnode.get_node_names()
+    x = len([sub for sub in active_nodes if 'rviz' in sub])
+    time.sleep(0.1)
+
+time.sleep(5)
 
 msg = path_id()
 time_departure_off = 120
@@ -58,8 +68,29 @@ bogus.pose.orientation.x, bogus.pose.orientation.y, bogus.pose.orientation.z, bo
 
 time_init = time.time()
 
+def draw_environment():
+    boundary = Marker()
+    boundary.type = Marker.CUBE
+    boundary.header.frame_id = 'map'
+    boundary.ns = "Boundary"
+    boundary.color.a = 1
+    boundary.color.r, boundary.color.g, boundary.color.b = [0.3, 0.3, 0.3]
+    boundary.scale.y, boundary.scale.z = [0.1, 2]
 
-def draw_time():
+    signs = Marker()
+    signs.type = Marker.CUBE
+    signs.header.frame_id = 'map'
+    signs.ns = "Signs"
+    signs.color.a = 0.8
+    signs.pose.orientation.x, signs.pose.orientation.y, signs.pose.orientation.z, signs.pose.orientation.w = [0, 0, 0, 1]
+    signs.scale.x, signs.scale.y, signs.scale.z = [5, 2.5, 0.1]
+
+    positions = [[21.25, 0, 0], [42.5, 24, 0], [21.25, 48, 0], [0, 24, 0]]
+    orientations = [[0, 0, 0, 1], [0, 0, 1, 1], [0, 0, 0, 1], [0, 0, 1, 1]]
+    scale = [42.5, 48, 42.5, 48]
+    position_sign = [[2.5, 1.25, 0.1], [40, 46.75, 0.1]]
+    colors = [[0, 0.8, 0], [0.8, 0, 0]]
+
     tt = Marker()
     tt.header.frame_id = 'map'
     tt.type = Marker.TEXT_VIEW_FACING
@@ -68,10 +99,26 @@ def draw_time():
     tt.ns = "WorldTime"
     tt.id = 1
     tt.color.a = 1
+    tt.pose.position.x, tt.pose.position.y = [-10, 35]
+
     while True:
         tt.text = str(int(time.time() - time_init))
         rviz.publish(tt)
-        time.sleep(1)
+        if random() > 0.5:
+            for i in range(4):
+                boundary.id = i
+                boundary.pose.orientation.x, boundary.pose.orientation.y, boundary.pose.orientation.z, boundary.pose.orientation.w = orientations[i]
+                boundary.pose.position.x, boundary.pose.position.y, boundary.pose.position.z = positions[i]
+                boundary.scale.x = scale[i]
+                rviz.publish(boundary)
+                time.sleep(0.1)
+
+            for i in range(2):
+                signs.id = i
+                signs.pose.position.x, signs.pose.position.y, signs.pose.position.z = position_sign[i]
+                signs.color.r, signs.color.g, signs.color.b = colors[i]
+                rviz.publish(signs)
+                time.sleep(0.1)
 
 
 def global_state(req):
@@ -88,7 +135,7 @@ def response():
     rospy.spin()
 
 
-timer = Thread(target=draw_time)
+timer = Thread(target=draw_environment)
 services = Thread(target=response)
 timer.start()
 services.start()

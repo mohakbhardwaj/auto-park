@@ -72,7 +72,7 @@ class Car:
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
         self.path_color.r, self.path_color.g, self.path_color.b = self.color
         self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = [0.05, 0.05, 0.05]
-        self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [3, 3, 0.1]
+        self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 4, 0.1]
         self.path_marker.scale.x = 0.3
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [ 0, 0, 0,  1]
         self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [0, 0, 0, 1]
