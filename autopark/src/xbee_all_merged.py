@@ -45,6 +45,7 @@ pub2 = rospy.Publisher("destination", String, queue_size = 10, latch = True) # e
 # send GOODBYE to other XBees when ctrl+c or ctrl+z heard, then shut down
 def signal_handler(signal, frame):
     print("I sent GOODBYE")
+    print("XBee closing gracefully")
     mymsg = build_message_to_send(vcl_id,'GOODBYE',{0:0})
     ser.write(mymsg)
     if isUI:
@@ -410,6 +411,10 @@ def callback():
             # UPDATE XBEE
             if rec_msg.message_type == 'UPDATE':
                 print "I received UPDATE from ", rec_msg.vcl_id
+
+
+                print "original dict"
+                print vcl_dict
                 #Updates dictionary with spot chosen by rec_msg.vcl_id
                 if rec_msg.vcl_id in vcl_dict:
                     temp_spot = vcl_dict[rec_msg.vcl_id]
@@ -428,6 +433,9 @@ def callback():
                     else:
                         sendUIUpdate('returned', rec_msg.vcl_id, new_spot)
                     print 'sending selected spot to UI'
+
+                print "new dict"
+                print vcl_dict
     
             # PARKED XBEE
             if rec_msg.message_type == 'PARKED':

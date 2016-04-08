@@ -34,7 +34,7 @@ pub2 = rospy.Publisher("vv_update", String, queue_size = 10)
 msg = list_ui()
 current_state = []
 virtualcount = 0
-time.sleep(10)
+time.sleep(3)
 
 
 # compute the ID of the spot selected by the user

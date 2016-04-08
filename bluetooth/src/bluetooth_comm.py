@@ -71,11 +71,17 @@ def talk():
 	    pass
 
 def signal_handler(signal, frame):
-    print("Closing gracefully")
-    global server_sock
-    server_sock.close()
-    global client_sock
-    client_sock.close()
+    print("Bluetooth closing gracefully")
+    global server_sock, client_sock
+    try:
+        server_sock.close()
+    except NameError:
+        print "server_sock not defined"
+    try:
+        client_sock.close()
+    except NameError:
+        print "client_sock not defined"
+
     global runThreads
     runTheads = False
     os.kill(os.getpid(), 9)
