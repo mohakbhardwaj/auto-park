@@ -28,9 +28,12 @@ global liq_id
 vcl_dict = {}
 hello_dict = {}
 vcl_spot = 0 #receive from planner
+
 if len(sys.argv) > 1:
     if int(sys.argv[1]) == 1:
         isUI = True
+    else:
+	isUI = False
 else:
     isUI = False
 

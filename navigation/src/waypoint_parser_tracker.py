@@ -12,17 +12,46 @@ pub1 = rospy.Publisher("platform_state", String, queue_size=2)
 oculusprimesocket.connect()
 motion = 0
 stop = 0
-
+time.sleep(5)
+final = 0
+prev = -1
+cont = 0
 
 # set the waypoint
 def loco(data):
-    global motion, wp, state, spot
-    wp = data.goal
-    state = data.obj
-    spot = data.pos
-    oculusprimesocket.sendString("gotowaypoint " + wp)
-    motion = 1
-
+    global motion, wp, final, prev
+    print "The waypoint is ", data.data
+    wp = data.data
+    if wp == "25":
+	final = 0
+	motion = 1
+	oculusprimesocket.sendString("gotowaypoint " + str(prev) + "e")
+	while motion == 1:
+	    time.sleep(1)
+	motion = 1
+	final = 1
+    	oculusprimesocket.sendString("gotowaypoint " + wp)
+    	motion = 1
+	final = 1
+    else:
+	prev = int(wp)
+	transit = (int(wp) - 1)/6 + 1
+	final = 0
+	motion = 1
+	oculusprimesocket.sendString("gotowaypoint transit" + str(transit))
+	while motion == 1:
+	    time.sleep(1)
+	motion = 1
+	if (int(wp) - 1)%6 < 3:
+	    oculusprimesocket.sendString("gotowaypoint " + str((transit - 1)*6 + 3) + "e")
+	while motion == 1:
+	    time.sleep(1)
+	motion = 1
+	oculusprimesocket.sendString("gotowaypoint " + wp + "e")
+	while motion == 1:
+	    time.sleep(1)
+	final = 1
+	oculusprimesocket.sendString("gotowaypoint " + wp)
 
 # process the incoming commands from the master and control the state of the platform
 def emergency_stop(data):
@@ -50,21 +79,12 @@ t1.start()
 
 # track the state of the platform
 while True:
-    while stop != 1 and motion == 1:  # loop
+    while stop != 1:  # loop
         time.sleep(1)  # wait one second, don't clog the telnet stream!
-        oculusprimesocket.sendString("state roscurrentgoal")
-        s = oculusprimesocket.waitForReplySearch("<state> roscurrentgoal")
-        # check if roscurrentgoal is null (ie., deleted), means goal reached
-        if s == "<state> roscurrentgoal null":
+        s = oculusprimesocket.waitForReplySearch("navigation").lower().split()[-1]
+        if s == "reached":
             print "waypoint " + wp + " reached"
             motion = 0
-            if state == "exit":
-                pub1.publish("returned")
-            elif state == "park":
-                # bunch of hardcoded commands to enter the spot
-                if 0 < spot <= 6 or spot >= 18:
-                    pass
-                else:
-                    pass
-                pub1.publish("parked")
-                pass
+	    if final == 1:
+                pub1.publish("reached")
+
