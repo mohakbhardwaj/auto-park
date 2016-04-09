@@ -53,12 +53,12 @@ entrance = PoseStamped()
 entrance.pose.position.x = 2.5
 entrance.pose.position.y = 2
 entrance.pose.position.z = 0
-entrance.pose.orientation.x, entrance.pose.orientation.y, entrance.pose.orientation.z, entrance.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, 0)
+entrance.pose.orientation.x, entrance.pose.orientation.y, entrance.pose.orientation.z, entrance.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, 3.14/4)
 exitc = PoseStamped()
 exitc.pose.position.x = 40
 exitc.pose.position.y = 46
 exitc.pose.position.z = 0
-exitc.pose.orientation.x, exitc.pose.orientation.y, exitc.pose.orientation.z, exitc.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, 0)
+exitc.pose.orientation.x, exitc.pose.orientation.y, exitc.pose.orientation.z, exitc.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, 3.14/4)
 
 bogus = PoseStamped()
 bogus.pose.position.x = 40
