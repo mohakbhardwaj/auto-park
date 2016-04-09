@@ -117,16 +117,18 @@ int main(int argc, char **argv)
 		std::cout << env.costmap[0][j] << " ";
 
 	}*/
-	/*Pose s;
+	Pose s;
 	Pose g;
 	s.x = 2.5;
-	s.y = 2.0;
-	s.th = PI/4;
+	s.y =  2;
+	s.th = PI/2;
 
-	g.x = 37; g.y = 25; g.th = PI/4;
+	g.x = 3.5; g.y = 12; g.th = PI/2;
 	std::vector<geometry_msgs::PoseStamped> path;
-	double dd =  astarstatespace(std::make_pair(s,g),path);*/
-
+	double dd =  astarstatespace(std::make_pair(s,g),path);
+	// Pose l;
+	// lattice_pose(s, l, env.raster_size);
+	// std::cout << l.x << " " << l.y << " " << " " << checkCollision(s) << std::endl;
 
 
 	//ROS services setup
@@ -237,12 +239,15 @@ void end_pose(const Pose& startpose, Pose& endpose, double curvature, double len
 		double sina = sin(angle);
 		double nx = xc + radius*(cosa*ty + sina*tx);
 		double ny = yc + radius*(sina*ty - cosa*tx);
-		double nth = remainder(th + angle + PI,2*PI) - PI;
+		double nth = fmod(th + angle + PI,2*PI) - PI;
+		//double nth = fmod(th + angle + PI,2*PI) + PI;
+		//double nth = (th + angle + PI)%(2*PI) - PI;
 		endpose.x = nx;
 		endpose.y = ny;
 		endpose.th = nth;
-
+		// std::cout << startpose.th << " " << curvature << " " << endpose.th << " " << angle << std::endl;
 	}
+
 }
 //Check in the raster or costmap for the value of collision magnitude
 int checkCollision(const Pose& p)
@@ -261,8 +266,12 @@ int extendCheckCollision(const Pose& startpose, double curvature, double length,
 	{
 		Pose e;
 		end_pose(startpose, e, curvature, l);
-	    coll_val += checkCollision(e);
-		
+	    coll_val = checkCollision(e);
+		if(coll_val == 255)
+		{
+			//std::cout << e.x << " " << e.y << std::endl;
+			break;
+		}
 		l += dl;
 
 	}
@@ -272,15 +281,15 @@ int extendCheckCollision(const Pose& startpose, double curvature, double length,
 }
 void get_movements(std::vector<std::pair<double,double> >& movements)
 {	//Each movement is of the type (curvature,distance)
-	double distance = 0.05;
+	double distance = 0.005;
 	double curvature_min = 0.0;
-	double curvature_max = 1.0/10;
+	double curvature_max = 1.0/4.0;
 	movements.push_back(std::make_pair(curvature_max, distance));
 	movements.push_back(std::make_pair(curvature_min, distance));
-	movements.push_back(std::make_pair(-curvature_max, distance));
-	movements.push_back(std::make_pair(curvature_max, -distance));
-	movements.push_back(std::make_pair(curvature_min, -distance));
-	movements.push_back(std::make_pair(-curvature_max, -distance));
+	movements.push_back(std::make_pair(-1.0*curvature_max, distance));
+	movements.push_back(std::make_pair(curvature_max, -1.0*distance));
+	movements.push_back(std::make_pair(curvature_min, -1.0*distance));
+	movements.push_back(std::make_pair(-1.0*curvature_max, -1.0*distance));
 	// movements.push_back(std::make_pair(2.0*curvature_max, distance));
 	// movements.push_back(std::make_pair(2.0*curvature_min, distance));
 	// movements.push_back(std::make_pair(-2.0*curvature_max, distance));
@@ -310,7 +319,7 @@ bool poses_close(const Pose& p1, const Pose& p2)
 
 	double d_angle = abs(remainder(p1.th - p2.th + PI, (2.0*PI)) - PI);
 
-	return d_angle < rad(15.0) && distance_euclidean(p1,p2) <= 2.0;
+	return d_angle < rad(15.0) && distance_euclidean(p1,p2) <= 0.5;
 	//return distance_euclidean(p1,p2) <= 2.0;
 }
 
@@ -320,7 +329,7 @@ double rad(double angle_in_degrees)
 }
 double h1(const Pose& p1, const Pose& p2)
 {
-	return distance_euclidean(p1,p2);
+	return sqrt(pow(p2.x - p1.x, 2) + pow(p2.y - p1.y, 2) + pow(p2.th - p1.th, 2));
 }
 bool processpathQuery(localplanner::optimPath::Request &req, localplanner::optimPath::Response &res)
 {	
@@ -430,6 +439,7 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 			Node *new_node = new Node;
 			double curvature = movements[i].first;
 			double length = movements[i].second;
+
 			end_pose(curr_node->p, new_node->p ,curvature, length);
 			if(new_node->p.x < 0 || new_node->p.x >= extents[0] ||
 			   new_node->p.y < 0 || new_node->p.y >= extents[1])
@@ -438,21 +448,23 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 			}
 			Pose new_lattice_pose;
 			lattice_pose(new_node->p, new_lattice_pose,pose_raster);
-			//std::cout << new_lattice_pose.x << " " << new_lattice_pose.y << std::endl;
+			//std::cout << new_node->p.x << " " << new_node->p.y << " " << new_node->p.th << std::endl;
+			// std::cout << new_lattice_pose.x << " " << new_lattice_pose.y << std::endl;
 			//std::cout << env.costmap[new_lattice_pose.y][new_lattice_pose.x] << std::endl;
 			if(generated_states.count(new_lattice_pose))
 			{
 				continue;
 			}
 			
-			if(checkCollision(new_node->p)!= 255 && extendCheckCollision(curr_node->p, curvature, length, pose_raster) < 255)
+			if(checkCollision(new_node->p)!= 255 && extendCheckCollision(curr_node->p, curvature, length, pose_raster) != 255)
 			{	//std::cout << extendCheckCollision(curr_node->p, curvature, length, pose_raster)<< std::endl;
 				new_node->g = curr_node->g + abs(length);
 				double new_h = h1(new_node->p,goal_pose); //+ ...
 				new_node->f = new_node->g + new_h;
 				new_node->parent = curr_node;
 				open.push(new_node);
-			}		
+			}
+
 		}
 
 	}
@@ -467,7 +479,7 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 			geometry_msgs::PoseStamped pose_push;
 			PosetoPoseStamped(pose_push, curr_node->p);
 			path.insert(path.begin(),pose_push);
-			//std::cout << "[x = " << curr_node->p.x << " y = " << curr_node->p.y << " th = " <<curr_node->p.th << " ]" << std::endl;
+			std::cout << "[x = " << curr_node->p.x << " y = " << curr_node->p.y << " th = " <<curr_node->p.th << " ]" << std::endl;
 			curr_node = curr_node->parent;
 			
 		}
@@ -480,7 +492,7 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 	}
 	else
 	{
-		
+		std::cout << "Closed Size: " << generated_states.size() << std::endl;
 		if(open.size() == 0)
 		{
 			ROS_WARN("Exhausted all options. Returning empty path");
