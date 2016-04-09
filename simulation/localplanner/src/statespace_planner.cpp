@@ -163,8 +163,8 @@ void openFile(std::ifstream& file, std::string filename)
 void LoadEnvironment(std::string costMapFile, std::string parkingSpotFile)
 {
 	env.raster_size = 0.025;
-	env.world_extents.push_back(40);
-	env.world_extents.push_back(46);
+	env.world_extents.push_back(42.5);
+	env.world_extents.push_back(48);
 	env.costMapFile = costMapFile;
 	env.parkingSpotFile = parkingSpotFile;
 	LoadCostMap(env.costmap, env.costMapFile);
@@ -272,7 +272,7 @@ int extendCheckCollision(const Pose& startpose, double curvature, double length,
 }
 void get_movements(std::vector<std::pair<double,double> >& movements)
 {	//Each movement is of the type (curvature,distance)
-	double distance = .05;
+	double distance = 0.05;
 	double curvature_min = 0.0;
 	double curvature_max = 1.0/10;
 	movements.push_back(std::make_pair(curvature_max, distance));
@@ -281,9 +281,9 @@ void get_movements(std::vector<std::pair<double,double> >& movements)
 	movements.push_back(std::make_pair(curvature_max, -distance));
 	movements.push_back(std::make_pair(curvature_min, -distance));
 	movements.push_back(std::make_pair(-curvature_max, -distance));
-	movements.push_back(std::make_pair(2.0*curvature_max, distance));
-	movements.push_back(std::make_pair(2.0*curvature_min, distance));
-	movements.push_back(std::make_pair(-2.0*curvature_max, distance));
+	// movements.push_back(std::make_pair(2.0*curvature_max, distance));
+	// movements.push_back(std::make_pair(2.0*curvature_min, distance));
+	// movements.push_back(std::make_pair(-2.0*curvature_max, distance));
 	//movements.push_back(std::make_pair(3.0*curvature_max, -distance));
 	//movements.push_back(std::make_pair(3.0*curvature_min, -distance));
 	//movements.push_back(std::make_pair(-3.0*curvature_max, -distance));
@@ -294,14 +294,13 @@ void lattice_pose(const Pose& continuouspose, Pose& latticepose, double pos_rast
 	latticepose.x = (floor(continuouspose.x/pos_raster));
 	latticepose.y = (floor(continuouspose.y/pos_raster));
 	latticepose.th = (floor(continuouspose.th/heading_raster));
-
 }
 
 
 double distance_euclidean(const Pose& p1, const Pose& p2)
 {
 	//Returns euclidean distance between two poses
-	return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2));
+	return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2)); //add th ????
 }
 
 bool poses_close(const Pose& p1, const Pose& p2)
@@ -441,10 +440,10 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 			lattice_pose(new_node->p, new_lattice_pose,pose_raster);
 			//std::cout << new_lattice_pose.x << " " << new_lattice_pose.y << std::endl;
 			//std::cout << env.costmap[new_lattice_pose.y][new_lattice_pose.x] << std::endl;
-			/*if(generated_states.count(new_lattice_pose))
+			if(generated_states.count(new_lattice_pose))
 			{
 				continue;
-			}*/
+			}
 			
 			if(checkCollision(new_node->p)!= 255 && extendCheckCollision(curr_node->p, curvature, length, pose_raster) < 255)
 			{	//std::cout << extendCheckCollision(curr_node->p, curvature, length, pose_raster)<< std::endl;
