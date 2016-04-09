@@ -37,4 +37,4 @@ with open("Spots.txt", "w") as text_file:
     for i in range(250, 1500, 100):
         string_spot = str(i/40) + " " + str(1850/40)
         text_file.write("{0} Empty\n".format(string_spot))
-
+        
