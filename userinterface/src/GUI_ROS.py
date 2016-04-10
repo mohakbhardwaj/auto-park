@@ -120,7 +120,10 @@ def draw_virtual_vehicle(event, x, y, flag, param):
                 popup("Error: Max Virtual Vehicles reached")
             else:
                 if len(current_state.keys()) > 0 and min(current_state.keys()) < 100:
-                    id_vv = max([v for v in current_state.keys() if v <= max_virtual_vehicles])+1
+                    for i in range(1, max([v for v in current_state.keys() if v <= max_virtual_vehicles])+2):
+                        if i not in current_state.keys():
+                            id_vv = i
+                            break
                     print ("id_vv: " + str(id_vv))
                 else:
                     id_vv = 1

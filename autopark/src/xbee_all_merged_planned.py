@@ -8,9 +8,10 @@ import os
 import signal
 import numpy as np
 import hashlib
+import ast
 import sys
 from std_msgs.msg import String
-from autopark.msg import list_ui
+from autopark.msg import list_ui, plan_msg, opt_choices
 from threading import Thread
 from heapq import heappush, heappop, heapify
 from protocolwrapper import (
@@ -28,6 +29,7 @@ global liq_id
 global vcl_motion
 vcl_dict = {}
 hello_dict = {}
+waypoints = {}
 vcl_spot = 0 #receive from planner
 vcl_motion = 0 # starts in_queue, not moving
 if len(sys.argv) > 1:
@@ -41,12 +43,13 @@ else:
 rospy.init_node("Xbee")
 pub1 = rospy.Publisher("ui_update", list_ui, queue_size = 10)
 pub2 = rospy.Publisher("destination", String, queue_size = 10, latch = True) # exit coordinates to navigation
+pub3 = rospy.Publisher("planner", plan_msg, queue_size = 10)
 
 
 # builds and sends message to XBees
-def send_XBee_msg(vcl_id, message_type, vcl_dict):
+def send_XBee_msg(vcl_id, message_type, vcl_dict, waypoints):
     print ("sending " + message_type + " message from vehicle " + str(vcl_id) + " to XBees")
-    data = dictToList(vcl_dict)
+    data = dictToList(vcl_dict, waypoints)
     datalen = len(data)
 
     raw = message_format.build(Container(
@@ -73,7 +76,7 @@ def send_XBee_msg(vcl_id, message_type, vcl_dict):
 def signal_handler(signal, frame):
     #print("I sent GOODBYE")
     print("XBee closing gracefully")
-    msg = send_XBee_msg(vcl_id,'GOODBYE',{0:[0,0]})
+    msg = send_XBee_msg(vcl_id,'GOODBYE',{0:[0,0]},{})
     ser.write(msg)
     if isUI:
         sendUIUpdate('returned', vcl_id, [25,0])
@@ -112,7 +115,7 @@ def recover_msg(msg):
         status = map(pw.input, msg)
         rec_crc = 0
         calc_crc = 1
-
+        
         if status[-1] == ProtocolStatus.MSG_OK:
                 rec_msg = pw.last_message
                 rec_crc = message_crc.parse(rec_msg[-8:]).crc
@@ -127,7 +130,7 @@ def recover_msg(msg):
 
 # reads message from XBees, parses, and returns it
 def getmsg():
-    time.sleep(0.5)
+    time.sleep(0.5) 
     getmsg = ser.read(ser.inWaiting())
     rec_msg = recover_msg(getmsg)
     if rec_msg is not None:
@@ -138,21 +141,64 @@ def getmsg():
         return None
 
 
+def waypointsToList(wypts):
+    # [len(wypts), len(path_vcl1), vcl1_id, vcl1_x1, vcl1_y1, ... , vcl1_xn, vcl1_yn, ... , len(path_vcln), vcln_id, ....
+    wylist = []
+    wylist.append(len(wypts))
+    for key, val in wypts.iteritems():
+        wylist.append(len(val))
+        wylist.append(key)
+        for i in range(len(val)):
+            wylist.append(val[i][0])
+            wylist.append(val[i][1])
+    return wylist
+
+
+def listToWaypoints(wylist):
+    print ("wylist: " + str(wylist))
+    wypts = {}
+    num_wypts = wylist[0]
+    del wylist[0]
+    for i in range(num_wypts):
+        num_coords = wylist[0]
+        del wylist[0]
+        temp = []
+        for i in range(num_coords):
+            temp.append([wylist[1], wylist[2]])
+            del wylist[1:3]
+        wypts[wylist[0]] = temp
+        del wylist[0]
+
+    return wypts
+
+
 # Returns int list of key, vals in vcl_dict
-def dictToList(vcl_dict):
+def dictToList(vcl_dict, wypts):
     data = []
+    data.append(len(vcl_dict))
     for key, val in vcl_dict.iteritems():
         data.append(key)
         data.append(val[0])
         data.append(val[1])
+
+    data = data + waypointsToList(wypts)
+
     return data
 
 
 # Returns dictionary of int values in data
 def listToDict(data):
-    vcl_dict = {}
-    vcl_dict = {data[i]: [data[i+1],data[i+2]] for i in range(0, len(data), 3)}
-    return vcl_dict
+    vdict = {}
+    dictDone = False
+    len_dict = data[0]
+    del data[0]
+    for i in range(len_dict):
+        vdict[data[0]] = [data[1],data[2]]
+        del data[0:3]
+
+    wypts = listToWaypoints(data)
+
+    return [vdict, wypts]
 
 
 # sends update to UI
@@ -174,81 +220,77 @@ def listen():
 
 # messages from app or ...locomotion?
 def callback_master(data):
-    global vcl_dict, vcl_spot, vcl_motion, isUI
+    global vcl_dict, waypoints, vcl_spot, vcl_motion, isUI
     print "heard something from master:"
     print data.data
 
     print "original dict"
     print vcl_dict
+    print "original waypoints"
+    print waypoints
 
     # park master
     if data.data == 'park':
         print "heard park"
 
-        bs = [0]*24
-        print bs
-        for val in vcl_dict.values():
-            print val
-            if val[0]!= 25 and val[0]!= 0:
-                bs[val[0]-1] = 1
+        spot_options = []
 
-        print "the bs:"
-        print bs
+        for i in range(1,25):
+            if i not in [x[0] for x in vcl_dict.values()]:
+                spot_options.append(i)
 
-        #start planner
-        # val_spot in format (spot cost, spot id - 1)
-        val_spot = [(5, 0),  (6, 1),  (7, 2), (8, 3), (9, 4) , (10, 5), (9, 6),  (10, 7), (11, 8), (12, 9), (13, 10), (14, 11), (10, 12), (11, 13), (12, 14), (13, 15), (14, 16) ,(15, 17), (14, 18), (15, 19), (16, 20), (17, 21), (18, 22), (19, 23)]
+        print ("the spot_options:" + str(spot_options))
 
-        heapify(val_spot)
-        found = False
-        fail = False
-        while found == False and fail == False:
-                curr_spot = heappop(val_spot)
+        msg = plan_msg()
+        msg.curr_spot = 0
+        msg.spot_options = str(spot_options)
+        msg.wpts = str(waypointsToList(waypoints))
+        pub3.publish(msg)
+        print "waiting for planner response"
+        plan = rospy.wait_for_message("opt", opt_choices)
+        opt_spot = plan.opt_spot
+        temp_wpt = ast.literal_eval(plan.wpts)
 
-                spot_val, input_idx = curr_spot
-
-                if bs[input_idx] == 0:
-                        optim_spot = curr_spot
-                        found = True
-                        print "found spot"
-                if len(val_spot) == 0:
-                        print "Failed"
-                        fail = True
-        time.sleep(1)
-        print 'opt spot ID'
-        print optim_spot[1]+1
-        print pub2.publish(repr(optim_spot[1]+1))
-        #end planner
 
         #start callback
 
-        vcl_spot = optim_spot[1]+1
+        vcl_spot = opt_spot
         vcl_motion = 1
         vcl_dict[vcl_id] = [vcl_spot,vcl_motion]
+        waypoints[vcl_id] = temp_wpt
 
         if isUI:
             print 'sending selected spot to UI'
             sendUIUpdate('parking', vcl_id, vcl_dict[vcl_id])
 
         print "Sending UPDATE because optimal spot was selected"
-        msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]})
+        msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]}, {vcl_id:waypoints[vcl_id]})
         ser.write(msg)
         # end callback
 
     # return master
     elif data.data == 'return':
         print "heard return"
-        print "sending exit ID (25) to nav"
-        pub2.publish('25')
+
+        msg = plan_msg()
+        msg.curr_spot = vcl_spot
+        msg.spot_options = str([])
+        msg.wpts = str([])
+        pub3.publish(msg)
+
+        print "waiting for planner response"
+        plan = rospy.wait_for_message("opt", opt_choices)
+        temp_wpt = ast.literal_eval(plan.wpts)
 
         vcl_motion = 1
         vcl_spot = 25
         vcl_dict[vcl_id] = [vcl_spot, vcl_motion]
+        waypoints[vcl_id] = temp_wpt
 
         if isUI:
             sendUIUpdate('returning', vcl_id, vcl_dict[vcl_id])
         print "Sending UPDATE message b/c return command received"
-        msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]})
+        msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]}, {vcl_id : waypoints[vcl_id]})
         ser.write(msg)
 
     # parked master
@@ -257,11 +299,12 @@ def callback_master(data):
 
         vcl_motion = 0
         vcl_dict[vcl_id][1] = vcl_motion
-
+        del waypoints[vcl_id]
+        
         if isUI:
             sendUIUpdate('parked', vcl_id, vcl_dict[vcl_id])
         print "Sending PARKED message b/c ROS parked status received"
-        msg = send_XBee_msg(vcl_id, 'PARKED', {vcl_id:vcl_dict[vcl_id]})
+        msg = send_XBee_msg(vcl_id, 'PARKED', {vcl_id:vcl_dict[vcl_id]},{})
         ser.write(msg)
 
     # returned master
@@ -271,16 +314,18 @@ def callback_master(data):
         if isUI:
             sendUIUpdate('returned', vcl_id, [25,0])
         print "Sending GOODBYE message b/c ROS returned received"
-        msg = send_XBee_msg(vcl_id, 'GOODBYE', {0:[0,0]})
+        msg = send_XBee_msg(vcl_id, 'GOODBYE', {0:[0,0]},{})
         ser.write(msg)
         print "Shutting down"
         os.kill(os.getpid(), 9)
-
+    
     else:
         print "ERROR: received unrecognized data from Master"
 
     print "updated dict"
     print vcl_dict
+    print "updated waypoints"
+    print waypoints
 
 
 # when msg received from UI, update local dict and send update to other XBees
@@ -304,6 +349,7 @@ def callback_UI(data):
     print "original dict"
     print vcl_dict
 
+    # TODO incorporate VV waypoints - make function to send + receive planning data
     vcl_dict[ui_vcl_id] = [ui_spot_id, ui_motion]
 
     print "updated dict"
@@ -311,7 +357,7 @@ def callback_UI(data):
 
     if ui_spot_id == 25 and ui_motion == 0:
         print "Sending GOODBYE b/c UI VV returned"
-        msg = send_XBee_msg(ui_vcl_id, 'GOODBYE', {0:[0,0]})
+        msg = send_XBee_msg(ui_vcl_id, 'GOODBYE', {0:[0,0]}, {})
         ser.write(msg)
         if ui_vcl_id in vcl_dict:
             del vcl_dict[ui_vcl_id]
@@ -319,14 +365,14 @@ def callback_UI(data):
             print vcl_dict
     else:
         print "Sending UPDATE b/c UI VV message received"
-        msg = send_XBee_msg(ui_vcl_id, 'UPDATE', {ui_vcl_id:vcl_dict[ui_vcl_id]})
+        msg = send_XBee_msg(ui_vcl_id, 'UPDATE', {ui_vcl_id:vcl_dict[ui_vcl_id]}, {ui_vcl_id: waypoints[ui_vcl_id]})
         ser.write(msg)
 
 
 # messages from other XBees
 def callback():
     print "entering callback"
-    global liq, vcl_dict, liq_id, isUI, vcl_spot, hello_dict, vcl_id, vcl_motion, hellocount
+    global liq, vcl_dict, waypoints, liq_id, isUI, vcl_spot, hello_dict, vcl_id, vcl_motion, hellocount
 
     while True:
         while ser.inWaiting()>0:
@@ -335,6 +381,8 @@ def callback():
             if rec_msg is not None:
                 print "original dict"
                 print vcl_dict
+                print "original waypoints"
+                print waypoints
 
                 # INTRO XBEE
                 if rec_msg.message_type == 'INTRO':
@@ -345,29 +393,34 @@ def callback():
                     if rec_msg.vcl_id == vcl_id or rec_msg.vcl_id > liq_id:
                         print 'rec_msg.data'
                         print rec_msg.data
-                        for key, val in rec_msg.data.iteritems():
+                        rec_dict = rec_msg.data[0]
+                        rec_way = rec_msg.data[1]
+                        for key, val in rec_dict.iteritems():
                             vcl_dict[key] = val
+                        for key, val in rec_way.iteritems():
+                            waypoints[key] = val
                         liq_id = max(vcl_dict.keys())
                         vcl_id = liq_id + 1
                         vcl_dict[vcl_id] = [vcl_spot, vcl_motion]
                         liq_id = vcl_id
                         print "I'm the liq"
-                        print "Sending update because erroneous INTRO received"
-                        msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]})
+                        print "Sending update because INTRO received"
+                        msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]}, {})
                         ser.write(msg)
                     if vcl_id == 0:
                         vcl_id = max(rec_msg.data.keys())+1
-                        vcl_dict = rec_msg.data
+                        vcl_dict = rec_msg.data[0]
                         vcl_dict[vcl_id] = [vcl_spot, vcl_motion]
+                        waypoints = rec_msg.data[1]
                         liq_id = vcl_id
                         print "I'm the liq"
                         print "Sending update because I have arrived"
-                        msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]})
+                        msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]}, {})
                         ser.write(msg)
                         #Tell the UI that I, and all my friends, exist.
+                        #TODO update with waypoint info
                         if isUI:
                             for key, val in vcl_dict.iteritems():
-                                msg = list_ui()
                                 if val[0] == 0:
                                     sendUIUpdate('in_queue', key, val)
                                 elif val[0] == 25 and val[1] == 1:
@@ -405,22 +458,28 @@ def callback():
                     print 'vcl_id'
                     print vcl_id
                     if liq_id == vcl_id:
-                        msg = send_XBee_msg(vcl_id, 'INTRO', vcl_dict)
+                        msg = send_XBee_msg(vcl_id, 'INTRO', vcl_dict, waypoints)
                         ser.write(msg)
 
                     # if this is the second hello from new vehicle AND i am second-to-liq, send intro, update dict, update liq
                     elif hello_dict[liq_id+1]>= 2 and vcl_id == stliq_id:
                         vcl_dict[liq_id] = [0,0]
-                        msg = send_XBee_msg(vcl_id, 'INTRO', vcl_dict)
+                        msg = send_XBee_msg(vcl_id, 'INTRO', vcl_dict, waypoints)
                         ser.write(msg)
 
                 # UPDATE XBEE
                 if rec_msg.message_type == 'UPDATE':
                     print "I received UPDATE from ", rec_msg.vcl_id
 
-                    vcl_dict[rec_msg.vcl_id] = rec_msg.data[rec_msg.vcl_id]
+                    rec_dict = rec_msg.data[0]
+                    rec_way = rec_msg.data[1]
+
+                    vcl_dict[rec_msg.vcl_id] = rec_dict[rec_msg.vcl_id]
+                    if rec_msg.vcl_id in rec_way:
+                        waypoints[rec_msg.vcl_id] = rec_way[rec_msg.vcl_id]
                     liq_id = max(vcl_dict.keys())
 
+                    # TODO update UI wapypoints
                     if isUI:
                         if vcl_dict[rec_msg.vcl_id][0] == 0:
                             sendUIUpdate('in_queue', rec_msg.vcl_id, vcl_dict[rec_msg.vcl_id])
@@ -439,6 +498,8 @@ def callback():
                 if rec_msg.message_type == 'PARKED':
                     print "I received PARKED from ", rec_msg.vcl_id
                     vcl_dict[rec_msg.vcl_id] = rec_msg.data[rec_msg.vcl_id]
+                    del waypoints[rec_msg.vcl_id]
+                    #TODO
                     if isUI:
                         sendUIUpdate('parked', rec_msg.vcl_id, vcl_dict[rec_msg.vcl_id])
 
@@ -447,17 +508,22 @@ def callback():
                     print "I received GOODBYE from ", rec_msg.vcl_id
 
                     if rec_msg.vcl_id in vcl_dict:
-                        vcl_dict.pop(rec_msg.vcl_id)
+                        del vcl_dict[rec_msg.vcl_id]
 
+                    if rec_msg.vcl_id in waypoints:
+                        del waypoints[rec_msg.vcl_id]
 
                     if len(vcl_dict.keys()) > 0:
                         liq_id = max(vcl_dict.keys())
 
+                    # TODO
                     if isUI:
                         sendUIUpdate('returned', rec_msg.vcl_id, [0, 0])
 
                 print "updated dict"
                 print vcl_dict
+                print "updated waypoints"
+                print waypoints
             else:
                 print "ERROR RECEIVED BAD DATA"
 
@@ -473,8 +539,8 @@ while not rospy.is_shutdown():
     liq_id = 100
     vcl_id = 0
     hellocount = 0
-
-    time.sleep(5)
+    
+    time.sleep(3)
     t1.start()
 
     while vcl_id == 0 and hellocount<= 2:
@@ -485,11 +551,12 @@ while not rospy.is_shutdown():
             print "I'm 100 now"
             # Publish existence to UI
             if isUI:
+                # TODO
                 sendUIUpdate('in_queue', vcl_id, vcl_dict[vcl_id])
                 print "I'm the UI"
         else:
             hellocount = hellocount+1
-            msg = send_XBee_msg(vcl_id, 'HELLO', {0:[0,0]})
+            msg = send_XBee_msg(vcl_id, 'HELLO', {0:[0,0]}, {})
             ser.write(msg)
             time.sleep(3.5)
 

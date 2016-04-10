@@ -48,6 +48,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
    FILES
    list_ui.msg
+   plan_msg.msg
+   opt_choices.msg
 #   Message2.msg
 )
 
