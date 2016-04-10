@@ -116,8 +116,9 @@ int main(int argc, char **argv)
 	//ROS node functionality
 	ros::init(argc, argv, "statespace_planner");
 	ros::NodeHandle n;
-	ros::Rate loop_rate(100);
-	//debug print of costmap
+	ros::Rate loop_rate(60);
+	ros::AsyncSpinner spinner(4);
+	//[Debug]: print costmap
 	/*for(size_t i = 0; i < env.costmap.size(); ++i)
 	{
 		for(size_t j =0; j < env.costmap[i].size(); ++j)
@@ -150,10 +151,14 @@ int main(int argc, char **argv)
 	ros::ServiceServer costservice = n.advertiseService("spotsTreadCost", processCostQuery);
 	ros::ServiceServer pathservice = n.advertiseService("optimPath", processpathQuery);
 	
-	loop_rate.sleep();
-
-	ros::spin();
 	
+	// ros::spin();
+	spinner.start();
+	ros::waitForShutdown();
+	// loop_rate.sleep();
+
+
+
 
 }
 
