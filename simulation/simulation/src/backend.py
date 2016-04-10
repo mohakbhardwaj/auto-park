@@ -64,7 +64,7 @@ bogus = PoseStamped()
 bogus.pose.position.x = 40
 bogus.pose.position.y = 26
 bogus.pose.position.z = 0
-bogus.pose.orientation.x, bogus.pose.orientation.y, bogus.pose.orientation.z, bogus.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, 3.14/2)
+bogus.pose.orientation.x, bogus.pose.orientation.y, bogus.pose.orientation.z, bogus.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, -3.14/2)
 
 time_init = time.time()
 
@@ -151,8 +151,8 @@ while True:
             print "Publish car #", i
             # spot = fetch_spot(True)
             # parking_dict[ids[i]] = spot.spots
-            bogus.pose.position.x = randint(3, 36)
-            bogus.pose.position.y = randint(20, 40)
+            bogus.pose.position.x = 26.25 #randint(3, 36)
+            bogus.pose.position.y = 22.25 #randint(20, 40)
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             command.publish(msg)
