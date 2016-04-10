@@ -408,7 +408,7 @@ def callback():
                         msg = send_XBee_msg(vcl_id, 'UPDATE', {vcl_id:vcl_dict[vcl_id]}, {})
                         ser.write(msg)
                     if vcl_id == 0:
-                        vcl_id = max(rec_msg.data.keys())+1
+                        vcl_id = max(rec_msg.data[0].keys())+1
                         vcl_dict = rec_msg.data[0]
                         vcl_dict[vcl_id] = [vcl_spot, vcl_motion]
                         waypoints = rec_msg.data[1]
@@ -497,7 +497,7 @@ def callback():
                 # PARKED XBEE
                 if rec_msg.message_type == 'PARKED':
                     print "I received PARKED from ", rec_msg.vcl_id
-                    vcl_dict[rec_msg.vcl_id] = rec_msg.data[rec_msg.vcl_id]
+                    vcl_dict[rec_msg.vcl_id] = rec_msg.data[0][rec_msg.vcl_id]
                     del waypoints[rec_msg.vcl_id]
                     #TODO
                     if isUI:
