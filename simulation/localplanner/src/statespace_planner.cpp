@@ -360,15 +360,7 @@ int extendCheckCollision(const Pose& startpose, double curvature, double length,
 	    coll_val = checkCollision(e);
 		if(coll_val == 255)
 		{
-			
-			// if(startpose.x >= (21 - 3) && startpose.x <= (21 + 3))
-		
-			// 	{
-			// 		std::cout << e.x << " " << e.y << std::endl;
-			// 		//std::cout << extendCheckCollision(curr_node->p, curvature, length, pose_raster)<< std::endl;
-			// 		// {std::cout << "[x = " << curr_node->p.x << " y = " << curr_node->p.y << " th = " <<curr_node->p.th << std::endl;}
-			// 	}
-			 // std::cout << "Collision!" << std::endl;
+
 			break;
 		}
 		l += dl;
@@ -432,7 +424,12 @@ bool poses_close(const Pose& p1, const Pose& p2)
 
 	double d_angle = abs(modulo(p1.th - p2.th + PI, (2.0*PI)) - PI);
 	// d_angle < rad(15.0) &&
+	////////////////////////DEFINITELY WORKS/////////////////////////
 	return  d_angle < rad(45) && distance_euclidean(p1,p2) <= 2;
+	//////////////////////////////////////////////////////
+
+
+
 	// double d = distance_euclidean(p1,p2);
 	// std::cout << d << std::endl;
 	// return d <= 1.0;
@@ -544,11 +541,11 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 	while(open.size() > 0)
 	{	//Stop search if frontier gets too large
 		// std::cout << "Still searching" << std::endl;
-		// if(open.size() > 500000)
-		// {
+		if(open.size() > 500000)
+		{
 			
-		// 	break;
-		// }
+			break;
+		}
 		//Pop the best node from the frontier
 		curr_node = open.top();
 		open.pop();

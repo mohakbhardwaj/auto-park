@@ -146,10 +146,10 @@ class Car:
             pts[i].y = self.interpolated_path[i][1]
             self.path_marker.points.append(pts[i])
             self.path_marker.colors.append(self.path_color)
-        pts[i+1] = Point()
-        pts[i+1].z = 0
-        pts[i+1].x = self.interpolated_path[-1][0]
-        pts[i+1].y = self.interpolated_path[-1][1]
+        pts.append(Point())
+        pts[-1].z = 0
+        pts[-1].x = self.interpolated_path[-1][0]
+        pts[-1].y = self.interpolated_path[-1][1]
         self.path_marker.points.append(pts[i])
         self.path_marker.colors.append(self.path_color)
         self.points_trace = self.path_marker.points
