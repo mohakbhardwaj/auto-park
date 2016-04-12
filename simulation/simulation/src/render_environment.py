@@ -93,7 +93,7 @@ class Car:
 
     def move(self):
         # update the state of the vehicle
-        self.path_index = int(self.motion_current[0] - self.motion_start) * speed
+        self.path_index = int((self.motion_current[0] - self.motion_start) * speed)
         if self.path_index >= len(self.interpolated_path):
             self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[-1][0:2]
             self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[-1][2])
@@ -236,7 +236,7 @@ def track():
 def draw():
     global current_time, physical_location
     while True:
-        time.sleep(0.01)
+        time.sleep(0.001)
         current_time[0] = time.time()
         track()
         for car in vehicles:
@@ -250,11 +250,11 @@ def draw():
                 if flag == 0:
                     car.move()
                     rviz.publish(car.path_marker)
-                    time.sleep(0.01)
+                    time.sleep(0.001)
                     rviz.publish(car.vehicle_marker)
-                    time.sleep(0.01)
+                    time.sleep(0.001)
                     rviz.publish(car.destination_marker)
-                    time.sleep(0.01)
+                    time.sleep(0.001)
 
 
 access = Thread(target=update)
