@@ -28,7 +28,9 @@ vehicles = []
 physical_location = [[i, 99, 99] for i in range(0, 108)]
 priority_count = 0
 rospack = rospkg.RosPack()
-stl_path = "file://" + rospack.get_path('simulation') + "/src/res/coupe.dae"
+stl_path = "file://" + rospack.get_path('simulation') + "/src/res/"
+cars_dict = {1:"Models/Batmobile/Batmobile.dae", 2:"Models/Protect_Van/Protect_Van.dae", 3:"Models/coupe_1/coupe.dae", 4:"Models/Jeep_rigged/Jeep_rigged.dae", 5:"Models/Lincoln_rigged/Lincoln_rigged.dae"}
+scale_dict = {1:[0.32, 0.32, 0.32], 2:[0.3, 0.3, 0.3], 3:[0.25, 0.25, 0.25], 4:[0.32, 0.32, 0.32], 5:[0.32, 0.32, 0.32]}
 buffer_region = 4
 
 # class which takes care of all the aspects of a vehicle
@@ -50,6 +52,12 @@ class Car:
         self.path_marker.header.frame_id = 'map'
         self.path_color = ColorRGBA()
         self.vehicle_marker.type = Marker.MESH_RESOURCE
+	select_random = randint(2,5)
+	if vehicle_id != 1:
+	    model_path = stl_path + cars_dict[select_random]
+	else:
+	    select_random = 1
+	    model_path = stl_path + cars_dict[select_random]
         self.vehicle_marker.mesh_resource = stl_path
         self.vehicle_marker.mesh_use_embedded_materials = True
         self.destination_marker.type = Marker.CYLINDER
@@ -78,8 +86,8 @@ class Car:
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
         self.path_color.r, self.path_color.g, self.path_color.b = self.color
         self.proximity_marker.color.r, self.proximity_marker.color.g, self.proximity_marker.color.b = self.color
-        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = [0.05, 0.05, 0.05]
-        self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 4, 0.1]
+        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = scale_dict[select_random]
+        self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 3.5, 0.1]
         self.proximity_marker.scale.x, self.proximity_marker.scale.y, self.proximity_marker.scale.z = [buffer_region, buffer_region, 0.1]
         self.path_marker.scale.x = 0.3
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [ 0, 0, 0, 1]
