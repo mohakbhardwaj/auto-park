@@ -101,7 +101,8 @@ def draw_environment():
     tt.pose.position.x, tt.pose.position.y = [-10, 35]
 
     while True:
-        tt.text = str(int(time.time() - time_init))
+    	time_display = int(time.time() - time_init) + 30
+        tt.text = str(17 + time_display/60) + ":" + str(time_display%60)
         rviz.publish(tt)
         if random() > 0.5:
             for i in range(4):
