@@ -7,7 +7,6 @@ import numpy as np
 from localplanner.srv import optimPath
 from geometry_msgs.msg import PoseStamped
 import tf
-from simulation.srv import global_request_backend
 from gplanner.srv import OptimalSpotGenerator
 from visualization_msgs.msg import *
 from threading import Thread
@@ -31,7 +30,7 @@ time.sleep(5)
 msg = path_id()
 time_departure_off = 120
 
-number_of_vehicles = 30
+number_of_vehicles = 90
 
 scalingfactor = 6
 
@@ -121,24 +120,17 @@ def draw_environment():
                 time.sleep(0.1)
 
 
-def global_state(req):
+def global_state():
     time_queue = 2
     queue = 0
     for i in cars_arrival:
 	if time_off + time_queue > i:
 	    queue += 1
-    return {'queue' : queue}
-
-
-def response():
-    global_service = rospy.Service("global_state_backend", global_request_backend, global_state)
-    rospy.spin()
+    return queue
 
 
 timer = Thread(target=draw_environment)
-services = Thread(target=response)
 timer.start()
-services.start()
 
 while True:
     time.sleep(0.5)
@@ -150,16 +142,23 @@ while True:
             msg.state = "arrive"
             msg.id = i
             print "Publish car #", i
-            # spot = fetch_spot(True)
-            # parking_dict[ids[i]] = spot.spots
-            bogus.pose.position.x = 33.75 #randint(3, 36)
-            bogus.pose.position.y = 37.75#randint(20, 40)
+            spot = fetch_spot(True,global_state())
+            #parking_dict[ids[i]] = spot.spots
+            # bogus.pose.position.x = 33.75 #randint(3, 36)
+            # bogus.pose.position.y = 37.75#randint(20, 40)
+
+            bogus.pose.position.x = spot.spots[0]
+            bogus.pose.position.y = spot.spots[1]
+            bogus.pose.position.z = spot.spots[2]
+            print bogus.pose.position.x
+            print bogus.pose.position.y
+            print bogus.pose.position.z
+
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             command.publish(msg)
             time.sleep(5)
             k += 2.5
-        """
         elif time_off > cars_stay[i]:
             cars_stay[i] = 99999
             msg.state = "return"
@@ -168,4 +167,4 @@ while True:
             resp = fetch_path([bogus, exitc])
             msg.result = resp.path
             command.publish(msg)
-        """
+

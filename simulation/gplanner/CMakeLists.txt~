@@ -9,7 +9,11 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
+  geometry_msgs
 )
+
+set_property(TARGET planner_node PROPERTY CXX_STANDARD 11)
+set_property(TARGET planner_node PROPERTY CXX_STANDARD_REQUIRED ON)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -71,6 +75,7 @@ add_service_files(
 generate_messages(
    DEPENDENCIES
    std_msgs
+   geometry_msgs
  )
 
 ################################################
@@ -141,7 +146,9 @@ file(GLOB gplanner_SRC
 # add_dependencies(gplanner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
- add_executable(planner_node src/planner_node.cpp)
+ add_executable(planner_node 
+ src/planner_node.cpp 
+ src/gplanner.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

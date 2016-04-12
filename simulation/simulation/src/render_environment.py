@@ -71,7 +71,7 @@ class Car:
         self.vehicle_marker.color.r, self.vehicle_marker.color.g, self.vehicle_marker.color.b = self.color
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
         self.path_color.r, self.path_color.g, self.path_color.b = self.color
-        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = [0.05, 0.05, 0.05]
+        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = [0.04, 0.05, 0.05]
         self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 4, 0.1]
         self.path_marker.scale.x = 0.3
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [ 0, 0, 0,  1]
@@ -170,6 +170,7 @@ class Car:
         self.motion_start = 0
 	self.motion_init = 0
         self.motion = 0
+        self.vehicle_marker.pose = self.destination_marker.pose
         self.path_marker.action = Marker.DELETE
         self.destination_marker.action = Marker.DELETE
         self.check = 0
