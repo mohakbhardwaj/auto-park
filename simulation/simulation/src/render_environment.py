@@ -29,7 +29,7 @@ physical_location = [[i, 99, 99] for i in range(0, 108)]
 priority_count = 0
 rospack = rospkg.RosPack()
 stl_path = "file://" + rospack.get_path('simulation') + "/src/res/coupe.dae"
-
+buffer_region = 4
 
 # class which takes care of all the aspects of a vehicle
 class Car:
@@ -42,6 +42,8 @@ class Car:
         self.vehicle_marker = Marker()
         self.vehicle_marker.header.frame_id = 'map'
         self.vehicle_marker.action = Marker.ADD
+        self.proximity_marker = Marker()
+        self.proximity_marker.header.frame_id = 'map'
         self.destination_marker = Marker()
         self.destination_marker.header.frame_id = 'map'
         self.path_marker = Marker()
@@ -52,13 +54,16 @@ class Car:
         self.vehicle_marker.mesh_use_embedded_materials = True
         self.destination_marker.type = Marker.CYLINDER
         self.path_marker.type = Marker.LINE_STRIP
+        self.proximity_marker.type = Marker.CYLINDER
         self.vehicle_marker.ns = "Vehicle"
         self.destination_marker.ns = "Markers"
         self.path_marker.ns = "Path"
+        self.proximity_marker.ns = "Buffer Space"
         self.state = "arrive"
         self.vehicle_marker.color.a = 1
         self.destination_marker.color.a = 1
         self.path_color.a = 1
+        self.proximity_marker.color.a = 0.9
         self.color = [round(random(), 2) for _ in range(0, 3)]
         self.id = vehicle_id
         self.draw_path(path, self.state)
@@ -68,16 +73,21 @@ class Car:
         self.vehicle_marker.id = vehicle_id
         self.destination_marker.id = vehicle_id
         self.path_marker.id = vehicle_id
+        self.proximity_marker.id = vehicle_id
         self.vehicle_marker.color.r, self.vehicle_marker.color.g, self.vehicle_marker.color.b = self.color
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
         self.path_color.r, self.path_color.g, self.path_color.b = self.color
-        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = [0.04, 0.05, 0.05]
+        self.proximity_marker.color.r, self.proximity_marker.color.g, self.proximity_marker.color.b = self.color
+        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = [0.05, 0.05, 0.05]
         self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 4, 0.1]
+        self.proximity_marker.scale.x, self.proximity_marker.scale.y, self.proximity_marker.scale.z = [buffer_region, buffer_region, 0.1]
         self.path_marker.scale.x = 0.3
-        self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [ 0, 0, 0,  1]
-        self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [0, 0, 0, 1]
+        self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [ 0, 0, 0, 1]
+        self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [ 0, 0, 0, 1]
+        self.proximity_marker.pose.orientation.x, self.proximity_marker.pose.orientation.y, self.proximity_marker.pose.orientation.z, self.proximity_marker.pose.orientation.w = [ 0, 0, 0,  1]
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y, self.vehicle_marker.pose.position.z = [2.5, 2, 0]
         self.destination_marker.pose.position.z = 0
+        self.proximity_marker.pose.position.z = 0
         self.initiate = 1
 
     def quatfromang(self, yaw):
@@ -89,7 +99,7 @@ class Car:
         return tf.transformations.euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])[2]
 
     def pause(self):
-        self.motion_start = current_time[0] - self.path_index/speed
+        self.motion_start = current_time[0] - self.path_index/speed - 0.1
 
     def move(self):
         # update the state of the vehicle
@@ -100,6 +110,7 @@ class Car:
             self.clear_path()
         else:
             self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
+            self.proximity_marker.pose.position.x, self.proximity_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
             self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.interpolated_path[self.path_index][2])
             self.path_marker.points = self.points_trace[int(self.path_index/path_resolution):-1]
             self.path_marker.colors = self.color_trace[int(self.path_index/path_resolution):-1]
@@ -133,6 +144,7 @@ class Car:
         self.destination_marker.action = Marker.ADD
         self.destination_marker.pose.position.x, self.destination_marker.pose.position.y = self.vehicle_path[-1][0:2]
         self.path_marker.action = Marker.ADD
+        self.proximity_marker.action = Marker.ADD
         self.motion = 1
         self.motion_start = time.time()
 	self.motion_init = time.time()
@@ -173,6 +185,7 @@ class Car:
         self.vehicle_marker.pose = self.destination_marker.pose
         self.path_marker.action = Marker.DELETE
         self.destination_marker.action = Marker.DELETE
+        self.proximity_marker.action = Marker.DELETE
         self.check = 0
 
     def clear(self):
@@ -236,25 +249,25 @@ def track():
 def draw():
     global current_time, physical_location
     while True:
-        time.sleep(0.001)
+        time.sleep(0.0001)
         current_time[0] = time.time()
         track()
         for car in vehicles:
             if car.motion and car.initiate:
                 flag = 0
                 for i in range(0, car.priority):
-                    if np.linalg.norm(np.array(physical_location[car.priority][1:3]) - np.array(physical_location[i][1:3])) < 4:
+                    if np.linalg.norm(np.array(physical_location[car.priority][1:3]) - np.array(physical_location[i][1:3])) < buffer_region:
                         car.pause()
                         flag = 1
                         break
                 if flag == 0:
                     car.move()
                     rviz.publish(car.path_marker)
-                    time.sleep(0.001)
+                    time.sleep(0.0001)
                     rviz.publish(car.vehicle_marker)
-                    time.sleep(0.001)
+                    time.sleep(0.0001)
                     rviz.publish(car.destination_marker)
-                    time.sleep(0.001)
+                    time.sleep(0.0001)
 
 
 access = Thread(target=update)
