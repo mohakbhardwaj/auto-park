@@ -386,7 +386,7 @@ void get_movements(std::vector<std::pair<double,double> >& movements)
 	movements.push_back(std::make_pair(4.0*curvature_max, distance));
 	movements.push_back(std::make_pair(-4.0*curvature_max, distance));
 	movements.push_back(std::make_pair(5.0*curvature_max, 0.5*distance));
-	movements.push_back(std::make_pair(-5.0*curvature_max, 0.5*distance));
+	movements.push_back(std::make_pair(-5.0*curvature_min, 0.5*distance));
 	
 	////////////////////////////////////////////////////////////////////////////
 
