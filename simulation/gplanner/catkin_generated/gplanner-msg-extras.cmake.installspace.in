@@ -1,0 +1,2 @@
+set(gplanner_MESSAGE_FILES "")
+set(gplanner_SERVICE_FILES "srv/OptimalSpotGenerator.srv;srv/SpotsTreadCost.srv")

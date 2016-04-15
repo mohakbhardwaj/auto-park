@@ -5,12 +5,19 @@ project(gplanner CXX)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  
   roscpp
   rospy
+  sbpl
   std_msgs
   message_generation
   geometry_msgs
 )
+
+#find_package(PkgConfig REQUIRED)
+ #       pkg_check_modules(SBPL REQUIRED sbpl)
+  #      include_directories(${SBPL_INCLUDE_DIRS})
+   #     link_directories(${SBPL_LIBRARY_DIRS})
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -58,7 +65,7 @@ add_service_files(
    FILES
    OptimalSpotGenerator.srv
    SpotsTreadCost.srv
-#   Service2.srv
+
  )
 
 ## Generate actions in the 'action' folder
@@ -107,7 +114,7 @@ generate_messages(
 catkin_package(
 	CATKIN_DEPENDS message_runtime
 	INCLUDE_DIRS include
-    LIBRARIES gplanner
+  LIBRARIES gplanner
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
@@ -145,7 +152,13 @@ file(GLOB gplanner_SRC
 ## Declare a C++ executable
  add_executable(planner_node 
  src/planner_node.cpp 
- src/gplanner.cpp)
+ src/gplanner.cpp
+ src/roshandle.cpp
+ src/pathplanner.cpp)
+
+
+set_property(TARGET planner_node PROPERTY CXX_STANDARD 11)
+set_property(TARGET planner_node PROPERTY CXX_STANDARD_REQUIRED ON)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -153,7 +166,8 @@ file(GLOB gplanner_SRC
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(planner_node
-   ${catkin_LIBRARIES}
+   ${catkin_LIBRARIES} 
+   #${SBPL_LIBRARIES}
  )
 
 #############
