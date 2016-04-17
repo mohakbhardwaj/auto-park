@@ -13,7 +13,7 @@ from simulation.msg import path_id
 from simulation.srv import local_request, global_request_render
 from geometry_msgs.msg import Point
 from std_msgs.msg import ColorRGBA
-from random import random
+from random import random,randint
 
 rospy.init_node("Render")
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
@@ -28,7 +28,7 @@ vehicles = []
 physical_location = [[i, 99, 99] for i in range(0, 108)]
 priority_count = 0
 rospack = rospkg.RosPack()
-stl_path = "file://" + rospack.get_path('simulation') + "/src/res/"
+stl_path = "file:///home/shivam/catkin_ws/src/simulation/src/res/"
 cars_dict = {1:"Models/Batmobile/Batmobile.dae", 2:"Models/Protect_Van/Protect_Van.dae", 3:"Models/coupe_1/coupe.dae", 4:"Models/Jeep_rigged/Jeep_rigged.dae", 5:"Models/Lincoln_rigged/Lincoln_rigged.dae"}
 scale_dict = {1:[0.32, 0.32, 0.32], 2:[0.3, 0.3, 0.3], 3:[0.25, 0.25, 0.25], 4:[0.32, 0.32, 0.32], 5:[0.32, 0.32, 0.32]}
 buffer_region = 4
@@ -52,13 +52,13 @@ class Car:
         self.path_marker.header.frame_id = 'map'
         self.path_color = ColorRGBA()
         self.vehicle_marker.type = Marker.MESH_RESOURCE
-	select_random = randint(2,5)
-	if vehicle_id != 1:
-	    model_path = stl_path + cars_dict[select_random]
-	else:
-	    select_random = 1
-	    model_path = stl_path + cars_dict[select_random]
-        self.vehicle_marker.mesh_resource = stl_path
+        select_random = randint(2,5)
+        if vehicle_id != 1:
+            model_path = stl_path + cars_dict[select_random]
+        else:
+            select_random = 1
+            model_path = stl_path + cars_dict[select_random]
+        self.vehicle_marker.mesh_resource = model_path
         self.vehicle_marker.mesh_use_embedded_materials = True
         self.destination_marker.type = Marker.CYLINDER
         self.path_marker.type = Marker.LINE_STRIP
@@ -275,6 +275,8 @@ def draw():
                     rviz.publish(car.vehicle_marker)
                     time.sleep(0.0001)
                     rviz.publish(car.destination_marker)
+                    time.sleep(0.0001)
+                    rviz.publish(car.proximity_marker)
                     time.sleep(0.0001)
 
 

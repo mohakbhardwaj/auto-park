@@ -20,8 +20,8 @@ d2Exitplanner::d2Exitplanner(const char* envName, const char* motPrim)
 
     initializeEnv();
 
-    start.x= 2;
-    start.y=2;
+    start.x= 46.0;
+    start.y=40.0;
     start.th=0;
     populateGoals();
 
@@ -110,7 +110,7 @@ void d2Exitplanner :: initializePlanner(EnvironmentNAVXYTHETALAT* env)
 bool d2Exitplanner::plan()
 {   
     
-    int start_id = env->SetStart(start.x, start.y, start.th); 
+    int start_id;
     int goal_id;
     int bRet;
     initializePlanner(env);
@@ -228,10 +228,5 @@ envState d2Exitplanner::spotIDtoCoord(int i)
     cout<<" GOALS SENT "<<e.x<<" "<<e.y<<" "<<e.y;
 
     return e;
-    
-}
-
-void d2Exitplanner::updateTimeCost()
-{
     
 }

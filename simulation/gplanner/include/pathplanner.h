@@ -54,10 +54,6 @@ public:
 
 	envState spotIDtoCoord(int i);
 
-	void updateTimeCost()
-	{
-		
-	}
 
 
 private:

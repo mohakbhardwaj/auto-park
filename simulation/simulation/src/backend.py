@@ -144,12 +144,17 @@ while True:
             msg.id = i
             print "Publish car #", i
             spot = fetch_spot(True,global_state())
+            #parking_dict[ids[i]] = spot.spots
+            # bogus.pose.position.x = 33.75 #randint(3, 36)
+            # bogus.pose.position.y = 37.75#randint(20, 40)
+
             bogus.pose.position.x = spot.spots[0]
             bogus.pose.position.y = spot.spots[1]
             bogus.pose.position.z = spot.spots[2]
             print bogus.pose.position.x
             print bogus.pose.position.y
             print bogus.pose.position.z
+
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             command.publish(msg)

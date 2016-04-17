@@ -7,16 +7,22 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-
 add_message_files(
     FILES
     timemsg.msg
  )
-
 generate_messages(
   DEPENDENCIES
   std_msgs
 )
+
+catkin_package(
+CATKIN_DEPENDS message_runtime
+)
+
+
+
+
 
 
 ## Generate services in the 'srv' folder
@@ -29,9 +35,7 @@ generate_messages(
 
 
 
-catkin_package(
-CATKIN_DEPENDS message_runtime
-)
+
 
 
 include_directories(include ${catkin_INCLUDE_DIRS})

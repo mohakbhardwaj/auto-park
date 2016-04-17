@@ -64,7 +64,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
    FILES
    OptimalSpotGenerator.srv
-   SpotsTreadCost.srv
+   spotsTreadCost.srv
 
  )
 
@@ -113,6 +113,7 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 	CATKIN_DEPENDS message_runtime
+	actionlib_msgs actionlib
 	INCLUDE_DIRS include
   LIBRARIES gplanner
 #  CATKIN_DEPENDS other_catkin_pkg
@@ -151,9 +152,9 @@ file(GLOB gplanner_SRC
 
 ## Declare a C++ executable
  add_executable(planner_node 
- src/planner_node.cpp 
  src/gplanner.cpp
  src/roshandle.cpp
+ src/planner_node.cpp 
  src/pathplanner.cpp)
 
 

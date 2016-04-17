@@ -116,9 +116,8 @@ int main(int argc, char **argv)
 	//ROS node functionality
 	ros::init(argc, argv, "statespace_planner");
 	ros::NodeHandle n;
-	ros::Rate loop_rate(60);
-	ros::AsyncSpinner spinner(4);
-	//[Debug]: PRINT COSTMAP
+	ros::Rate loop_rate(100);
+	//debug print of costmap
 	/*for(size_t i = 0; i < env.costmap.size(); ++i)
 	{
 		for(size_t j =0; j < env.costmap[i].size(); ++j)
@@ -127,8 +126,12 @@ int main(int argc, char **argv)
 		}
 		std::cout << std::endl;
 	}*/
+	//std::cout << env.costmap.size() << " " << env.costmap[0].size() << std::endl;
+	/*for(size_t j = 0; j < env.costmap[0].size(); ++j)
+	{	
+		std::cout << env.costmap[0][j] << " ";
 
-	//[DEBUG]: Dummy queries
+	}*/
 	// Pose s;
 	// Pose g;
 	// s.x = 2.5;
@@ -147,14 +150,10 @@ int main(int argc, char **argv)
 	ros::ServiceServer costservice = n.advertiseService("spotsTreadCost", processCostQuery);
 	ros::ServiceServer pathservice = n.advertiseService("optimPath", processpathQuery);
 	
+	loop_rate.sleep();
+
+	ros::spin();
 	
-	// ros::spin();
-	spinner.start();
-	ros::waitForShutdown();
-	// loop_rate.sleep();
-
-
-
 
 }
 
@@ -180,6 +179,11 @@ int gridCoordinateToNodeId(Pose& p)
         node_id += x*env.num_cells_multiply[0];
         node_id += y*env.num_cells_multiply[1];
         node_id += th*env.num_cells_multiply[2];
+        //     mul = 1
+        //     for j in range(self.dimension - i-1):
+        //         mul = mul*self.num_cells[j]
+        //     node_id = node_id + coord[self.dimension - i-1]*mul
+        //     node_id = int(node_id)
 
         return node_id;
 }
@@ -386,7 +390,7 @@ void get_movements(std::vector<std::pair<double,double> >& movements)
 	movements.push_back(std::make_pair(4.0*curvature_max, distance));
 	movements.push_back(std::make_pair(-4.0*curvature_max, distance));
 	movements.push_back(std::make_pair(5.0*curvature_max, 0.5*distance));
-	movements.push_back(std::make_pair(-5.0*curvature_max, 0.5*distance));
+	movements.push_back(std::make_pair(-5.0*curvature_min, 0.5*distance));
 	
 	////////////////////////////////////////////////////////////////////////////
 
@@ -459,8 +463,9 @@ bool processCostQuery(localplanner::spotsTreadCost::Request &req, localplanner::
 {	
 	//TODO: Implement buffering of queries, multi-threading
 	Pose start,goal;
-	PoseStampedtoPose(req.query[0], start);
-	PoseStampedtoPose(req.query[1], start);
+	PoseStampedtoPose(req.start, start);
+	PoseStampedtoPose(req.goal, goal);
+
 	ROS_INFO("Received cost query from global planner for [%f, %f] to [%f, %f]", start.x, start.y, goal.x, goal.y);
 	std::vector<geometry_msgs::PoseStamped> path;
 	res.pathcost = astarstatespace(std::make_pair(start,goal), path);

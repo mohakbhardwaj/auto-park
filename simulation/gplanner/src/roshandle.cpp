@@ -28,20 +28,33 @@ bool ROShandle::estimation(gplanner::OptimalSpotGenerator::Request &req, gplanne
 		ROS_INFO("Request Received from rEngine");
 
 		gp.getQuery(req.qval);
-		
-		// for(int i=0;i<5;i++);
 
-		// if(lplanner_client.call(lplanner_costs))
-		// {
-		// 	ROS_INFO("Response Received from lplanner");
+		for ( int i=0; i<5;i++)
+		{
+			int pos=gp.getBestSpot(i,lplanner_costs);
 
-		// }
 
-		// else
-		// {
-		// 	ROS_INFO("Failed to get response from lPlanner");
-		// }
-		
+			// cout<<"\nlpanner data goal "<<lplanner_costs.request.goal.pose.position.x<< " "
+			// 		<<lplanner_costs.request.goal.pose.position.y<<" "<<lplanner_costs.request.goal.pose.orientation.x<<" "<<lplanner_costs.request.goal.pose.orientation.y
+			// 		<<" "<<lplanner_costs.request.goal.pose.orientation.z<<" "<<lplanner_costs.request.goal.pose.orientation.w;
+			
+			// cout<<"\nlpanner data start"<<lplanner_costs.request.start.pose.position.x<< " "
+			// 		<<lplanner_costs.request.start.pose.position.y<<" "<<lplanner_costs.request.start.pose.orientation.x<<" "<<lplanner_costs.request.start.pose.orientation.y
+			// 		<<" "<<lplanner_costs.request.start.pose.orientation.z<<" "<<lplanner_costs.request.start.pose.orientation.w;
+			
+			ROS_INFO("Request sent to local planner");
+			if(lplanner_client.call(lplanner_costs))
+			{
+				ROS_INFO("Response Received from local planner");
+				gp.getPathCosts(pos,lplanner_costs.response.pathcost);
+
+			}
+
+			else
+			{
+				ROS_INFO("Failed to get response from local planner");
+			}
+		}
 
 		int spotNo=gp.returnFinalSpot();
 		cout<<endl<<"spot No "<<spotNo;
@@ -59,8 +72,8 @@ bool ROShandle::estimation(gplanner::OptimalSpotGenerator::Request &req, gplanne
 void ROShandle::init_ros()
 {
 		optimalSpot = nh.advertiseService("OptimalSpotGenerator",&ROShandle::estimation,this); //initialise the ROS service for the spot query
-		lplanner_client = nh.serviceClient<gplanner::SpotsTreadCost>("Local_Planner_Cost_Service");
-
+		lplanner_client = nh.serviceClient<localplanner::spotsTreadCost>("spotsTreadCost");
+		wtimesub =nh.subscribe("worldtime",10,&globalPlanner::timeUpdate,&gp);
 
 	}
 
