@@ -43,6 +43,8 @@ struct Node
 	//Pose previous;
 	int nid;
 	Pose latticepose;
+	double lengthFromParent;
+	double curvatureFromParent;
 };
 //Functor for comparing Nodes to be stored in priority queue
 struct node_cmp_cost
@@ -470,7 +472,6 @@ bool processCostQuery(localplanner::spotsTreadCost::Request &req, localplanner::
 	std::vector<geometry_msgs::PoseStamped> path;
 	std::vector<double> d, c;
 	res.pathcost = astarstatespace(std::make_pair(start,goal), path, d, c);
-
 	return true;
 }
 
@@ -498,8 +499,9 @@ void PosetoPoseStamped(geometry_msgs::PoseStamped& p1, const Pose& p2)
 }
 //TODO: Remove need for latticepose in node
 // TODO: Make checking for world extents generic for dimensions
-double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::PoseStamped>& path)
-{	ros::Time begin = ros::Time::now();
+double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::PoseStamped>& path, std::vector<double>& pathDistances, std::vector<double>& pathCurvatures)
+{	
+	ros::Time begin = ros::Time::now();
 	double pose_raster = env.raster_size;
 	Pose start_pose = query.first;
 	Pose goal_pose = query.second;
@@ -507,9 +509,10 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 	start->p = start_pose;
 	lattice_pose(start->p, start->latticepose, pose_raster);
 	start->g = 0.0001; start->f = start->g + h1(start->p, goal_pose) + h2(start->latticepose);
-	start->parent = NULL;
-	
+	start->parent = NULL;	
 	start->nid = gridCoordinateToNodeId(start->latticepose);
+	start->lengthFromParent = 0.0;
+	start->curvatureFromParent = 0.0;
 	double path_cost = 0; //Default value of cost to be returned at the end;
 	std::priority_queue<Node*, std::vector<Node*>, node_cmp_cost> open;
 	open.push(start);
@@ -614,6 +617,8 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 				/////////////////////////////////////////////////////////////////////////////
 				new_node->f = new_node->g + new_h;
 				new_node->parent = curr_node;
+				new_node->lengthFromParent = length;
+				new_node->curvatureFromParent = curvature;
 				open.push(new_node);
 			}
 
@@ -631,6 +636,8 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 			geometry_msgs::PoseStamped pose_push;
 			PosetoPoseStamped(pose_push, curr_node->p);
 			path.insert(path.begin(),pose_push);
+			pathDistances.insert(pathDistances.begin(),curr_node->lengthFromParent);
+			pathCurvatures.insert(pathCurvatures.begin(), curr_node->curvatureFromParent);
 			// std::cout << "[x = " << curr_node->p.x << " y = " << curr_node->p.y << " th = " <<curr_node->p.th << " ]" << std::endl;
 			curr_node = curr_node->parent;
 			
@@ -638,8 +645,12 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 		geometry_msgs::PoseStamped start_push, goal_push;
 		PosetoPoseStamped(start_push, start_pose);
 		PosetoPoseStamped(goal_push, goal_pose);
-		path.insert(path.begin(),start_push);	
+		path.insert(path.begin(),start_push);
+		pathDistances.insert(pathDistances.begin(), 0.0);
+		pathCurvatures.insert(pathCurvatures.begin(),0.0);	
 		path.push_back(goal_push);
+		pathDistances.push_back(0.0);
+		pathCurvatures.push_back(0.0);
 		ros::Duration elapsed_time = ros::Time::now() - begin;
 		ROS_INFO_STREAM("Path returned in " << elapsed_time << " seconds");
 	}
