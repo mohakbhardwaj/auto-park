@@ -62,6 +62,8 @@ public:
 
 	void getPathCosts(int i,float pathcost);
 
+	void getBestArea(int a);
+
 
 
 
@@ -87,6 +89,7 @@ private:
 
 	worldtime::timemsg peak;
 	int duration;
+	int area;
 
 
 

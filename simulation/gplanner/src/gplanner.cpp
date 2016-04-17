@@ -9,13 +9,14 @@
 using namespace std;
 
 #define INF 1000000
+#define MAB 1
 
 globalPlanner::globalPlanner()
 {
-	params.wexit=0.5;
-    params.wpath=1;
-    params.woccupied=1;
-    params.wqueue=2;
+	params.wexit=1.1;
+    params.wpath=1.5;
+    params.woccupied=1.2;
+    params.wqueue=1;
     params.wtime=1;
 
     nofSpots=104;
@@ -34,6 +35,11 @@ void globalPlanner::getQuery(int qval)
     qSize=qval;
     calculateFinalCosts();
 
+}
+
+void globalPlanner::getBestArea(int a)
+{
+    area=a;
 }
 
 
@@ -66,6 +72,7 @@ void globalPlanner::calculateFinalCosts()
     {
         sum+=*it;
     }
+
     
     for (int i=0; i< nofSpots;i++)
     {
@@ -82,6 +89,16 @@ void globalPlanner::calculateFinalCosts()
 int globalPlanner::getBestSpot(int i,localplanner::spotsTreadCost& lplanner) //get the i'th best spot
 {
     std::vector<double> costs_temp(finalSpotCosts);
+    
+    for (std::vector<double>::iterator it=costs_temp.begin(),i=0;it!=costs_temp.end();++it,i++)
+    {
+        int ar= spotToArea(i);
+        if (ar!=area)
+        {
+            *it=INF;
+        }
+    }
+
     std::sort(costs_temp.begin(),costs_temp.end());
     int pos= find(finalSpotCosts.begin(),finalSpotCosts.end(),costs_temp[i]) - finalSpotCosts.begin();
     
@@ -103,6 +120,23 @@ int globalPlanner::getBestSpot(int i,localplanner::spotsTreadCost& lplanner) //g
     lplanner.request.start.pose.orientation.w=1;
 
     return pos;
+
+}
+
+void globalPlanner::spotToArea(int pos)
+{
+    struct envState e=pp->spotIDtoCoord(pos);
+    struct envState max=pp->spotIDtoCoord(nofSpots-1);
+    
+    Xmax=max.x;
+    Ymax=max.y;
+
+    double Xmax,Ymax;
+
+    // if (e.x< Xmax)
+    // {
+    //     area = e.y<
+    // }
 
 }
 

@@ -425,7 +425,7 @@ bool poses_close(const Pose& p1, const Pose& p2)
 	double d_angle = abs(modulo(p1.th - p2.th + PI, (2.0*PI)) - PI);
 	// d_angle < rad(15.0) &&
 	////////////////////////DEFINITELY WORKS/////////////////////////
-	return  d_angle < rad(45) && distance_euclidean(p1,p2) <= 2;
+	return  d_angle < rad(15) && distance_euclidean(p1,p2) <= 2;
 	//////////////////////////////////////////////////////
 
 
@@ -609,7 +609,7 @@ double astarstatespace(std::pair<Pose,Pose> query, std::vector<geometry_msgs::Po
 			{	//std::cout << extendCheckCollision(curr_node->p, curvature, length, pose_raster)<< std::endl;
 			
 				///////////////////////////WEIGHTS THAT DEFINITELY WORK////////////////////////
-				new_node->g = curr_node->g + abs(length) + h2(new_node->latticepose)/64.0;
+				new_node->g = curr_node->g + abs(length) + h2(new_node->latticepose)/32.0;
 				double new_h = h1(new_node->p,goal_pose); //+ ...
 				/////////////////////////////////////////////////////////////////////////////
 				new_node->f = new_node->g + new_h;
