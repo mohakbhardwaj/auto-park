@@ -94,7 +94,7 @@ int checkCollision(const Pose&); //Return collision cost value
 int extendCheckCollision(const Pose& , double , double, double );
 bool processpathQuery(localplanner::optimPath::Request&, localplanner::optimPath::Response&);
 bool processCostQuery(localplanner::spotsTreadCost::Request& , localplanner::spotsTreadCost::Response&);
-double astarstatespace(std::pair<Pose,Pose>, std::vector<geometry_msgs::PoseStamped>&);
+double astarstatespace(std::pair<Pose,Pose>, std::vector<geometry_msgs::PoseStamped>&, std::vector<double>&, std::vector<double>&);
 void end_pose(const Pose& startpose, Pose& endpose, double curvature, double length);
 void lattice_pose(const Pose& continuouspose, Pose& latticepose, double raster);
 bool poses_close(const Pose& p1, const Pose& p2);
@@ -456,7 +456,7 @@ bool processpathQuery(localplanner::optimPath::Request &req, localplanner::optim
 	PoseStampedtoPose(req.query[0], start);
 	PoseStampedtoPose(req.query[1], goal);
 	ROS_INFO("Received path query from rendering engine for [%f, %f] to [%f, %f]", start.x, start.y, goal.x, goal.y);
-	astarstatespace(std::make_pair(start,goal), res.path);
+	astarstatespace(std::make_pair(start,goal), res.path, res.pd, res.pc);
 	return true;
 }
 bool processCostQuery(localplanner::spotsTreadCost::Request &req, localplanner::spotsTreadCost::Response &res)
@@ -468,7 +468,8 @@ bool processCostQuery(localplanner::spotsTreadCost::Request &req, localplanner::
 
 	ROS_INFO("Received cost query from global planner for [%f, %f] to [%f, %f]", start.x, start.y, goal.x, goal.y);
 	std::vector<geometry_msgs::PoseStamped> path;
-	res.pathcost = astarstatespace(std::make_pair(start,goal), path);
+	std::vector<double> d, c;
+	res.pathcost = astarstatespace(std::make_pair(start,goal), path, d, c);
 
 	return true;
 }
