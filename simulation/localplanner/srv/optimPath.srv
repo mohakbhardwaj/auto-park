@@ -3,3 +3,5 @@ geometry_msgs/PoseStamped[] query
 ---
 #response fields
 geometry_msgs/PoseStamped[] path
+float64[] pd
+float64[] pc
