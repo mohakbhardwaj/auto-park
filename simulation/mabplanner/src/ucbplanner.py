@@ -2,15 +2,17 @@ import rospy
 from mabplanner.msg import rt_data
 import numpy as np
 from math import sqrt, log
-from mabplanner.srv import optimArea
+from gplanner.srv import mab
 import rospkg
+import operator
+from collections import defaultdict
 
 rospy.init_node("MabPlanner")
 
-segments_current = {}
-spots_data = {}
+segments_current = defaultdict(list) # {segmentid:[Q(a), n(a), numOfSpotsinArea, total_cost}
+spots_data = defaultdict(list) # {spotId: [park_time, exit_time, areaId]} 
 nStep = 0
-
+vel = 5.55 #in m/s
 def id2areaId(spotId):
 	row = (spotId - 1)/52
 	column = math.abs(int(((spotId - 1)%52)/6.5)%2 - 1)
@@ -24,12 +26,17 @@ def init():
 	costlist = [float(line) for line in f]
 	for i in xrange(len(costlist)):
 		areaId = id2areaId(i)
-		spots_data[i] = [0.0, costlist[i], areaId]
-	for i in segments_current.values():
+		spots_data[i] = [0.0, (costlist[i]/vel), areaId]
+	
+	numSpotsinArea = [0]*4
+	initialCostinArea = [0]*4
+
+	for i in spots_data.values():
 		numSpotsinArea[i[2]] += 1
-		initialCostinArea[i[2]] += i[2]
+		initialCostinArea[i[2]] += i[0] + i[1]
+	
 	for j in xrange(len(numSpotsinArea)):
-		segments_current[j] = [initialCostinArea[j]/numSpotsinArea[j], 0]
+		segments_current[j] = [initialCostinArea[j]/numSpotsinArea[j], 0, numSpotsinArea[j], initialCostinArea[j]/numSpotsinArea[j]]
 
 
 
@@ -38,51 +45,39 @@ def populate(data):
 	global spots_data, nStep
 	if data.action == "park":
 		spots_data[data.id][0] = data.time
-		updateStats(data.id)
 	elif data.action == "return":
 		spots_data[data.id][1] = data.time
-		updateStats(data.id)
+	updateStats(data.id,data.time)
 	else:
 		nStep = data.ctr
 
 
-def mab(req):
+def mabArmPul(req):
 	sums = [0]*4
 	global segments_current
-	# for i in spots_data.keys():
-	# 	sums[spots_data[i][2]] += 
-	a = []
-	for segment in segments_current.keys():
-		cost1 = segments_current[segment][0]
-		nSelections = segments_current[segment][1]
-		if nSelections != 0:
-			cost2 = sqrt((2*log(req.nStep))/nSelections)
-		else:
-			cost2 = 0
-		a.append(cost1 - cost2)
-	
-	bestArea = a.index(min(a))
+	bestArea = min(segments_current.iteritems(), key = operator.itemgetter(1)[3])[0]
 	segments_current[bestArea][1] += 1  #Update the fact that the area has been selected once
 	return bestArea
 
 
 def main():
 	rospy.Subscriber("realtime_updates", rt_data, populate)
-	global_service = rospy.Service("segmentRequest", optimArea, mab)
+	global_service = rospy.Service("segmentRequest", mab, mabArmPull)
 
 
-def updateStats(spotId):
-	global nStep
-	# nStep = counter
+
+def updateStats(spotId,time):
+	global segments_current
+
 	activeArea = spots_data[spotId][2]
-	ctr = [0] * 4
-	for i in segments_current.values():
-		ctr[i[2]] += 1
-	numSpotsinActiveArea = ctr[activeArea]
-	segments_current[activeArea][0] = segments_current[activeArea][0]*nStep + ((spots_data[spotId][0] + spots_data[spotId][1])/numSpotsinActiveArea)
-
+	
+	segments_current[activeArea][0] = (segments_current[activeArea][0]*(nStep-1) + (time/segments_current[activeArea][2])/nStep
+	
+	segments_current[activeArea][3] = segments_current[activeArea][0] + sqrt((2*log(nStep))/segments_current[activeArea][1])
 
 
 		
 
 
+if __name__ == '__main__':
+	main()
