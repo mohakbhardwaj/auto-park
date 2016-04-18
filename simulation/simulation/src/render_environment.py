@@ -5,9 +5,9 @@ import rospy
 import time
 import tf
 import numpy as np
-from threading import Thread
 import rospkg
 import math
+import pickle
 
 from visualization_msgs.msg import *
 from simulation.msg import path_id
@@ -15,9 +15,13 @@ from simulation.srv import local_request, global_request_render
 from geometry_msgs.msg import Point
 from std_msgs.msg import ColorRGBA
 from random import random, randint
+from mabplanner.msg import rt_data
+from threading import Thread
 
 rospy.init_node("Render")
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
+mab = rospy.Publisher("realtime_update", rt_data, queue_size=0)
+
 
 smoothness = 10
 speed = 2 * smoothness
@@ -36,6 +40,12 @@ cars_dict = {1: "Models/Batmobile/Batmobile.dae", 2: "Models/Protect_Van/Protect
              5: "Models/Lincoln_rigged/Lincoln_rigged.dae"}
 scale_dict = {1: [0.32, 0.32, 0.32], 2: [0.3, 0.3, 0.3], 3: [0.25, 0.25, 0.25], 4: [0.32, 0.32, 0.32],
               5: [0.32, 0.32, 0.32]}
+
+with open(rospack.get_path('simulation') + "/src/id_to_config.p", "rb") as f:
+    spots = pickle.load(f)
+
+spots_id = list(spots)
+spots_config = spots.values()
 
 
 # class which takes care of all the aspects of a vehicle
@@ -83,10 +93,8 @@ class Car:
         self.vehicle_marker.color.r, self.vehicle_marker.color.g, self.vehicle_marker.color.b = self.color
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
         self.path_color.r, self.path_color.g, self.path_color.b = self.color
-        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = scale_dict[
-            select_random]
-        self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 3.5,
-                                                                                                             0.1]
+        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = scale_dict[select_random]
+        self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 3.5, 0.1]
         self.path_marker.scale.x = 0.1
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [
             0, 0, 0, 1]
@@ -95,6 +103,7 @@ class Car:
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y, self.vehicle_marker.pose.position.z = [
             2.5, 2, 0]
         self.destination_marker.pose.position.z = 0
+        self.spot_id = spots_id[spots_config.index(self.vehicle_path[-1][0:2])]
         self.initiate = 1
 
     def quatfromang(self, yaw):
@@ -199,15 +208,17 @@ class Car:
     def clear_path(self):
         global parking_duration, pause_duration, returning_duration
         # clear the path of the vehicle
-        if self.state == "parking":
+        if self.state == "arrive":
             parking_duration[self.id] = time.time() - self.motion_init
             pause_duration[self.id] = self.motion_start - self.motion_init
             self.state = "idle"
+            mab_publish(self.spot_id, "park", parking_duration[self.id])
         elif self.state == "returning":
             returning_duration[self.id] = time.time() - self.motion_init
             pause_duration[self.id] += self.motion_start - self.motion_init
             self.clear()
             self.state = "clear"
+            mab_publish(self.spot_id, "return", returning_duration[self.id])
         self.motion_start = 0
         self.motion_init = 0
         self.motion = 0
@@ -225,12 +236,27 @@ class Car:
         return self.interpolated_path[self.path_index]
 
 
+def mab_publish(sid, action, t):
+    temp = rt_data()
+    temp.id = sid - 1
+    temp.action = action
+    temp.time = t
+    temp.ctr = 0
+    mab.publish(temp)
+
+
 def vehicle_state(data):
     global vehicles, priority_count
     if data.state == "arrive":
         a = Car(data.id, data.result, priority_count, data.pd, data.pc)
         vehicles.append(a)
         priority_count += 1
+        mab_ctr = rt_data()
+        mab_ctr.id = 0
+        mab_ctr.action = "counter"
+        mab_ctr.time = 0
+        mab_ctr.ctr = priority_count
+        mab.publish(mab_ctr)
     elif data.state == "return":
         vehicles[data.id].draw_path(data.result, data.state, data.pd, data.pc)
 
