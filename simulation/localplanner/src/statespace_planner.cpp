@@ -376,9 +376,9 @@ void get_movements(std::vector<std::pair<double,double> >& movements)
 {	//Each movement is of the type (curvature,distance)
 	
 	///////////////////////////MOTION PRIMITIVES THAT DEFINITELY WORK/////////////////////////
-	double distance = 1;
-	double curvature_min = 0.0;
-	double curvature_max = 1.0/4.0;
+	// double distance = 1;
+	// double curvature_min = 0.0;
+	// double curvature_max = 1.0/4.0;
 	// movements.push_back(std::make_pair(curvature_max, distance));
 	// movements.push_back(std::make_pair(curvature_min, distance));
 	// movements.push_back(std::make_pair(-1.0*curvature_max, distance));
@@ -395,22 +395,37 @@ void get_movements(std::vector<std::pair<double,double> >& movements)
 	// movements.push_back(std::make_pair(-5.0*curvature_min, 0.5*distance));
 	
 	////////////////////////////////////////////////////////////////////////////
-	movements.push_back(std::make_pair(curvature_max, distance));
-	movements.push_back(std::make_pair(curvature_min, distance));
-	movements.push_back(std::make_pair(-1.0*curvature_max, distance));
-	movements.push_back(std::make_pair(1/8, distance));
-	movements.push_back(std::make_pair(-1/8,distance));
-	movements.push_back(std::make_pair(1/10, distance));
-	movements.push_back(std::make_pair(-1/10, distance));
-	movements.push_back(std::make_pair(1/12, distance));
-	movements.push_back(std::make_pair(-1/12*curvature_max, distance));
-	movements.push_back(std::make_pair(1/6, distance));
-	movements.push_back(std::make_pair(-1/6, distance));
-	movements.push_back(std::make_pair(curvature_max, -1.0*distance));
-	movements.push_back(std::make_pair(curvature_min, -1.0*distance));
-	movements.push_back(std::make_pair(-1.0*curvature_max, -1.0*distance));
-	movements.push_back(std::make_pair(1/8, -1.0*distance));
-	movements.push_back(std::make_pair(-1/8,-1.0*distance));
+	// movements.push_back(std::make_pair(curvature_max, distance));
+	// movements.push_back(std::make_pair(curvature_min, distance));
+	// movements.push_back(std::make_pair(-1.0*curvature_max, distance));
+	// movements.push_back(std::make_pair(1/8, distance));
+	// movements.push_back(std::make_pair(-1/8,distance));
+	// movements.push_back(std::make_pair(1/10, distance));
+	// movements.push_back(std::make_pair(-1/10, distance));
+	// movements.push_back(std::make_pair(1/12, distance));
+	// movements.push_back(std::make_pair(-1/12*curvature_max, distance));
+	// movements.push_back(std::make_pair(1/6, distance));
+	// movements.push_back(std::make_pair(-1/6, distance));
+	// movements.push_back(std::make_pair(curvature_max, -1.0*distance));
+	// movements.push_back(std::make_pair(curvature_min, -1.0*distance));
+	// movements.push_back(std::make_pair(-1.0*curvature_max, -1.0*distance));
+	// movements.push_back(std::make_pair(1/8, -1.0*distance));
+	// movements.push_back(std::make_pair(-1/8,-1.0*distance));
+
+	double distanceShort = 0.3;
+	double distanceLong = 1;
+	double curvature = 1/4.0;
+	movements.push_back(std::make_pair(0.0, distanceLong));
+	movements.push_back(std::make_pair(0.0, distanceShort));
+	movements.push_back(std::make_pair(curvature, distanceLong));
+	movements.push_back(std::make_pair(curvature, distanceShort));
+	movements.push_back(std::make_pair(-1.0*curvature, distanceLong));
+	movements.push_back(std::make_pair(-1.0*curvature, distanceShort));
+	//Backwards
+	movements.push_back(std::make_pair(curvature, -1.0*distanceShort));
+	movements.push_back(std::make_pair(-1.0*curvature, -1.0*distanceShort));
+	movements.push_back(std::make_pair(0.0, -1.0*distanceShort));
+
 
 
 

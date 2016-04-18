@@ -66,6 +66,7 @@ add_service_files(
    FILES
    OptimalSpotGenerator.srv
    spotsTreadCost.srv
+   mab.srv
 
  )
 
@@ -221,3 +222,6 @@ set_property(TARGET planner_node PROPERTY CXX_STANDARD_REQUIRED ON)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+if(CMAKE_COMPILER_IS_GNUCXX) 
+add_definitions(-std=gnu++0x) 
+endif()
