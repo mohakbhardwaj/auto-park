@@ -90,9 +90,10 @@ int globalPlanner::getBestSpot(int i,localplanner::spotsTreadCost& lplanner) //g
 {
     std::vector<double> costs_temp(finalSpotCosts);
     
-    for (std::vector<double>::iterator it=costs_temp.begin(),i=0;it!=costs_temp.end();++it,i++)
+    int j=0;
+    for (std::vector<double>::iterator it=costs_temp.begin();it!=costs_temp.end();++it,j++)
     {
-        int ar= spotToArea(i);
+        int ar= spotToArea(j);
         if (ar!=area)
         {
             *it=INF;
@@ -123,21 +124,27 @@ int globalPlanner::getBestSpot(int i,localplanner::spotsTreadCost& lplanner) //g
 
 }
 
-void globalPlanner::spotToArea(int pos)
+int globalPlanner::spotToArea(int pos)
 {
     struct envState e=pp->spotIDtoCoord(pos);
     struct envState max=pp->spotIDtoCoord(nofSpots-1);
     
-    Xmax=max.x;
-    Ymax=max.y;
+    double Xmax=max.x;
+    double Ymax=max.y;
 
-    double Xmax,Ymax;
+    int ar;
+    
+    if (e.x< Xmax/2)
+    {
+         ar = e.y< Ymax/2 ? 0 : 1;
+    }
 
-    // if (e.x< Xmax)
-    // {
-    //     area = e.y<
-    // }
+    else
+    {
+         ar= e.y <Ymax/2 ? 2 : 3;
+    }
 
+    return ar;
 }
 
 void globalPlanner::getPathCosts(int i, float pathcost)
@@ -229,7 +236,7 @@ void globalPlanner::normalize(std::vector<double>& v)
 envState globalPlanner::returnConfig(int i)
 {
     struct envState e=pp->spotIDtoCoord(i);
-    cout<<" GOALS SENT "<<e.x<<" "<<e.y<<" "<<e.y;
+    //cout<<" GOALS SENT "<<e.x<<" "<<e.y<<" "<<e.y;
     return e;
 }
 

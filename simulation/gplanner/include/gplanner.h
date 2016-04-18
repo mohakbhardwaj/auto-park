@@ -64,6 +64,8 @@ public:
 
 	void getBestArea(int a);
 
+	int spotToArea(int pos);
+
 
 
 

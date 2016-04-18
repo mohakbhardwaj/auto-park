@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(gplanner CXX)
- #set(CMAKE_CXX_FLAGS "-std=c++11 $(CMAKE_CXX_FLAGS)")
-set (CMAKE_CXX_STANDARD 11)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -160,8 +159,6 @@ file(GLOB gplanner_SRC
  src/pathplanner.cpp)
 
 
-
-
 set_property(TARGET planner_node PROPERTY CXX_STANDARD 11)
 set_property(TARGET planner_node PROPERTY CXX_STANDARD_REQUIRED ON)
 
@@ -222,6 +219,3 @@ set_property(TARGET planner_node PROPERTY CXX_STANDARD_REQUIRED ON)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-if(CMAKE_COMPILER_IS_GNUCXX) 
-add_definitions(-std=gnu++0x) 
-endif()
