@@ -13,13 +13,15 @@ segments_current = defaultdict(list) # {segmentid:[Q(a), n(a), numOfSpotsinArea,
 spots_data = defaultdict(list) # {spotId: [park_time, exit_time, areaId]} 
 nStep = 0
 vel = 5.55 #in m/s
+costUpperBound = 0
+
 def id2areaId(spotId):
 	row = (spotId - 1)/52
 	column = math.abs(int(((spotId - 1)%52)/6.5)%2 - 1)
 	return column + 2*row
 
 def init():
-	global spots_data, segments_current
+	global spots_data, segments_current, costUpperBound
 	rospack = rospkg.Rospack()
 	cost_path = rospack.get_path('mabplanner') + "/src/costs.txt"
 	f = open(cost_path, r)
@@ -35,8 +37,11 @@ def init():
 		numSpotsinArea[i[2]] += 1
 		initialCostinArea[i[2]] += i[0] + i[1]
 	
+	
 	for j in xrange(len(numSpotsinArea)):
 		segments_current[j] = [initialCostinArea[j]/numSpotsinArea[j], 0, numSpotsinArea[j], initialCostinArea[j]/numSpotsinArea[j]]
+
+	costUpperBound = max(segments_current.iteritems(), key = operator.itemgetter(1)[0])[0]
 
 
 
@@ -73,7 +78,7 @@ def updateStats(spotId,time):
 	
 	segments_current[activeArea][0] = (segments_current[activeArea][0]*(nStep-1) + (time/segments_current[activeArea][2])/nStep
 	
-	segments_current[activeArea][3] = segments_current[activeArea][0] + sqrt((2*log(nStep))/segments_current[activeArea][1])
+	segments_current[activeArea][3] = (segments_current[activeArea][0]/costUpperBound) + sqrt((2*log(nStep))/segments_current[activeArea][1])
 
 
 		
