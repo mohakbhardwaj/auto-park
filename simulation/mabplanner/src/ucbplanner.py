@@ -13,7 +13,7 @@ segments_current = defaultdict(list) # {segmentid:[Q(a), n(a), numOfSpotsinArea,
 spots_data = defaultdict(list) # {spotId: [park_time, exit_time, areaId]} 
 nStep = 0
 vel = 5.55 #in m/s
-costUpperBound = 0
+costUpperBound = 206/vel
 
 def id2areaId(spotId):
 	row = (spotId - 1)/52
@@ -21,7 +21,7 @@ def id2areaId(spotId):
 	return column + 2*row
 
 def init():
-	global spots_data, segments_current, costUpperBound
+	global spots_data, segments_current
 	rospack = rospkg.Rospack()
 	cost_path = rospack.get_path('mabplanner') + "/src/costs.txt"
 	f = open(cost_path, r)
@@ -41,7 +41,7 @@ def init():
 	for j in xrange(len(numSpotsinArea)):
 		segments_current[j] = [initialCostinArea[j]/numSpotsinArea[j], 0, numSpotsinArea[j], initialCostinArea[j]/numSpotsinArea[j]]
 
-	costUpperBound = max(segments_current.iteritems(), key = operator.itemgetter(1)[0])[0]
+	# costUpperBound = max(segments_current.iteritems(), key = operator.itemgetter(1)[0])[0]
 
 
 
