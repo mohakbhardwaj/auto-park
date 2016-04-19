@@ -13,6 +13,29 @@ from threading import Thread
 from random import randint
 import rosnode
 from random import random
+import pickle
+import rospkg
+
+
+rospack = rospkg.RosPack()
+
+with open(rospack.get_path('simulation') + "/src/id_to_config.p", "rb") as f:
+    spots = pickle.load(f)
+
+spot_id = list(spots)
+
+spots_order = []
+spot_ctr = 1
+
+for i in range(0, 10, 2):
+    for j in range(13*i, 13*i+7):
+	spots_order.append(j+1)
+    for j in range(13*(i+1), 13*(i+1)+7):
+	spots_order.append(j+1)
+    for j in range(13*i+7, 13*i+13):
+	spots_order.append(j+1)
+    for j in range(13*(i+1)+7, 13*(i+1)+13):
+	spots_order.append(j+1)
 
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
 rospy.init_node("Backend")
@@ -130,6 +153,8 @@ def global_state():
     return queue
 
 
+
+
 timer = Thread(target=draw_environment)
 timer.start()
 
@@ -143,23 +168,25 @@ while True:
             msg.state = "arrive"
             msg.id = i
             print "Publish car #", i
-            spot = fetch_spot(True,global_state())
+            #spot = fetch_spot(True,global_state())
             #parking_dict[ids[i]] = spot.spots
-            # bogus.pose.position.x = 33.75 #randint(3, 36)
-            # bogus.pose.position.y = 37.75#randint(20, 40)
-
-            bogus.pose.position.x = spot.spots[0]
-            bogus.pose.position.y = spot.spots[1]
-            bogus.pose.position.z = spot.spots[2]
+            #bogus.pose.position.x = 33.75 #randint(3, 36)
+            #bogus.pose.position.y = 37.75#randint(20, 40)
+            #bogus.pose.position.x = spot.spots[0]
+            #bogus.pose.position.y = spot.spots[1]
+            bogus.pose.position.x = spots[spots_order[spot_ctr]][0]
+            bogus.pose.position.y = spots[spots_order[spot_ctr]][1]
+            bogus.pose.position.z = 0
             print bogus.pose.position.x
             print bogus.pose.position.y
             print bogus.pose.position.z
-
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             command.publish(msg)
             time.sleep(5)
             k += 2.5
+	    spot_ctr += 1
+
         elif time_off > cars_stay[i]:
             cars_stay[i] = 99999
             msg.state = "return"

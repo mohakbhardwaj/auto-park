@@ -22,7 +22,7 @@ rospy.init_node("Render")
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
 mab = rospy.Publisher("realtime_update", rt_data, queue_size=0)
 
-
+buffer_region = 8
 smoothness = 10
 speed = 2 * smoothness
 current_time = [0]
@@ -58,6 +58,8 @@ class Car:
         self.vehicle_marker = Marker()
         self.vehicle_marker.header.frame_id = 'map'
         self.vehicle_marker.action = Marker.ADD
+	self.proximity_marker = Marker()
+        self.proximity_marker.header.frame_id = 'map'
         self.destination_marker = Marker()
         self.destination_marker.header.frame_id = 'map'
         self.path_marker = Marker()
@@ -74,13 +76,16 @@ class Car:
         self.vehicle_marker.mesh_use_embedded_materials = True
         self.destination_marker.type = Marker.CYLINDER
         self.path_marker.type = Marker.LINE_STRIP
+	self.proximity_marker.type = Marker.CYLINDER
         self.vehicle_marker.ns = "Vehicle"
         self.destination_marker.ns = "Markers"
         self.path_marker.ns = "Path"
+	self.proximity_marker.ns = "Buffer Space"
         self.state = "arrive"
         self.vehicle_marker.color.a = 1
         self.destination_marker.color.a = 1
         self.path_color.a = 1
+	self.proximity_marker.color.a = 0.9
         self.color = [round(random(), 2) for _ in range(0, 3)]
         self.id = vehicle_id
         self.draw_path(path, self.state, pd, pc)
@@ -90,18 +95,23 @@ class Car:
         self.vehicle_marker.id = vehicle_id
         self.destination_marker.id = vehicle_id
         self.path_marker.id = vehicle_id
+	self.proximity_marker.id = vehicle_id
         self.vehicle_marker.color.r, self.vehicle_marker.color.g, self.vehicle_marker.color.b = self.color
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
         self.path_color.r, self.path_color.g, self.path_color.b = self.color
+	self.proximity_marker.color.r, self.proximity_marker.color.g, self.proximity_marker.color.b = self.color
         self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = scale_dict[select_random]
         self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 3.5, 0.1]
+	self.proximity_marker.scale.x, self.proximity_marker.scale.y, self.proximity_marker.scale.z = [buffer_region, buffer_region, 0.1]
         self.path_marker.scale.x = 0.3
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [
             0, 0, 0, 1]
         self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [
             0, 0, 0, 1]
+	self.proximity_marker.pose.orientation.x, self.proximity_marker.pose.orientation.y, self.proximity_marker.pose.orientation.z, self.proximity_marker.pose.orientation.w = [ 0, 0, 0,  1]
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y, self.vehicle_marker.pose.position.z = [
             2.5, 2, 0]
+	self.proximity_marker.pose.position.z = 0
         self.destination_marker.pose.position.z = 0
         self.spot_id = spots_id[spots_config.index(self.vehicle_path[-1][0:2])]
         self.initiate = 1
@@ -125,8 +135,8 @@ class Car:
                     self.vehicle_path[-1][2])
             self.clear_path()
         else:
-            self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[
-                                                                                           self.path_index][0:2]
+            self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
+	    self.proximity_marker.pose.position.x, self.proximity_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
             self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(
                     self.interpolated_path[self.path_index][2])
             self.path_marker.points = self.points_trace[int(self.path_index / path_resolution):-1]
@@ -200,6 +210,7 @@ class Car:
         self.destination_marker.action = Marker.ADD
         self.destination_marker.pose.position.x, self.destination_marker.pose.position.y = self.vehicle_path[-1][0:2]
         self.path_marker.action = Marker.ADD
+	self.proximity_marker.action = Marker.ADD
         self.motion = 1
         self.motion_start = time.time()
         self.motion_init = time.time()
@@ -243,6 +254,7 @@ class Car:
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.vehicle_path[-1][2])
         self.path_marker.action = Marker.DELETE
         self.destination_marker.action = Marker.DELETE
+	self.proximity_marker.action = Marker.DELETE
         self.check = 0
 
     def clear(self):
@@ -252,7 +264,6 @@ class Car:
     def service_response(self):
         return self.interpolated_path[self.path_index]
 
-
 def mab_publish(sid, action, t):
     temp = rt_data()
     temp.id = sid - 1
@@ -260,7 +271,6 @@ def mab_publish(sid, action, t):
     temp.time = t
     temp.ctr = 0
     mab.publish(temp)
-
 
 def vehicle_state(data):
     global vehicles, priority_count
@@ -316,6 +326,49 @@ def track():
             car.check = 1
 
 
+def parking_stats():
+    tt = Marker()
+    tt.header.frame_id = 'map'
+    tt.type = Marker.TEXT_VIEW_FACING
+    tt.scale.z = 2
+    tt.action = Marker.ADD
+    tt.ns = "Statistics"
+    tt.id = 1
+    tt.color.a = 1
+    tt.pose.position.x, tt.pose.position.y = [-4, -10]
+    tt1 = Marker()
+    tt1.header.frame_id = 'map'
+    tt1.type = Marker.TEXT_VIEW_FACING
+    tt1.scale.z = 2
+    tt1.action = Marker.ADD
+    tt1.ns = "Statistics"
+    tt1.id = 2
+    tt1.color.a = 1
+    tt1.pose.position.x, tt.pose.position.y = [-15, -10]
+    tt2 = Marker()
+    tt2.header.frame_id = 'map'
+    tt2.type = Marker.TEXT_VIEW_FACING
+    tt2.scale.z = 2
+    tt2.action = Marker.ADD
+    tt2.ns = "Statistics"
+    tt2.id = 3
+    tt2.color.a = 1
+    tt2.pose.position.x, tt.pose.position.y = [-19, -10]
+    while True:
+	if len(parking_duration.values()) != 0:
+	    tt.text = "Average Parking Duration: " + str(round(sum(parking_duration.values())/len(parking_duration.values()), 2)) + "           "
+	    tt1.text = "Average Pause Duration: " + str(round(sum(pause_duration.values())/len(pause_duration.values()), 2)) + "                    "
+	    rviz.publish(tt)
+	    time.sleep(1)
+	    rviz.publish(tt1)
+	    time.sleep(1)
+	if len(returning_duration.values()) != 0:
+	    tt2.text = "Average Return Duration: " + str(round(sum(returning_duration.values())/len(returning_duration.values()), 2)) + "                                    "
+	    time.sleep(1)
+ 	    rviz.publish(tt2)
+	    time.sleep(1)
+
+
 # have a custom message of line, cylinder marker, and a cube marker in each object of the class
 # keep on updating the positions based on motion flag
 def draw():
@@ -329,7 +382,7 @@ def draw():
                 flag = 0
                 for i in range(0, car.priority):
                     if np.linalg.norm(np.array(physical_location[car.priority][1:3]) - np.array(
-                            physical_location[i][1:3])) < 4:
+                            physical_location[i][1:3])) < buffer_region:
                         car.pause()
                         flag = 1
                         break
@@ -341,10 +394,14 @@ def draw():
                     time.sleep(0.0001)
                     rviz.publish(car.destination_marker)
                     time.sleep(0.0001)
+		    rviz.publish(car.proximity_marker)
+                    time.sleep(0.0001)
 
 
 access = Thread(target=update)
 render = Thread(target=draw)
+stats = Thread(target=parking_stats)
 
 access.start()
 render.start()
+stats.start()
