@@ -13,9 +13,8 @@ from threading import Thread
 from random import randint
 import rosnode
 from random import random
-import pickle
 import rospkg
-
+import pickle
 
 rospack = rospkg.RosPack()
 
@@ -25,7 +24,7 @@ with open(rospack.get_path('simulation') + "/src/id_to_config.p", "rb") as f:
 spot_id = list(spots)
 
 spots_order = []
-spot_ctr = 1
+spot_ctr = 0
 
 for i in range(0, 10, 2):
     for j in range(13*i, 13*i+7):
@@ -55,7 +54,7 @@ time_departure_off = 120
 
 number_of_vehicles = 90
 
-scalingfactor = 6
+scalingfactor = 1
 
 cars_arrival = [scalingfactor*abs(8 - round(elem, 1)) for elem in np.random.rayleigh(2, number_of_vehicles)]
 cars_stay = [time_departure_off + scalingfactor*round(elem, 1) for elem in np.random.chisquare(3, number_of_vehicles)]
@@ -64,10 +63,11 @@ cars_stay = [time_departure_off + scalingfactor*round(elem, 1) for elem in np.ra
 print "1"
 rospy.wait_for_service('optimPath')
 print "2"
-rospy.wait_for_service('OptimalSpotGenerator')
+#rospy.wait_for_service('OptimalSpotGenerator')
 print "3"
 fetch_path = rospy.ServiceProxy('optimPath', optimPath)
-fetch_spot = rospy.ServiceProxy('OptimalSpotGenerator', OptimalSpotGenerator)
+#fetch_spot = rospy.ServiceProxy('OptimalSpotGenerator', OptimalSpotGenerator)
+
 
 parking_dict = {}
 
@@ -125,7 +125,11 @@ def draw_environment():
 
     while True:
     	time_display = int(time.time() - time_init) + 30
-        tt.text = str(17 + time_display/60) + ":" + str(time_display%60)
+	if time_display%60 < 10:
+	    temp = "0" + str(time_display%60)
+	else:
+	    temp = str(time_display%60)
+        tt.text = str(17 + time_display/60) + ":" + temp
         rviz.publish(tt)
         if random() > 0.5:
             for i in range(4):
@@ -148,11 +152,9 @@ def global_state():
     time_queue = 2
     queue = 0
     for i in cars_arrival:
-	if time_off + time_queue > i:
-	    queue += 1
+        if time_off + time_queue > i:
+            queue += 1
     return queue
-
-
 
 
 timer = Thread(target=draw_environment)
@@ -170,23 +172,29 @@ while True:
             print "Publish car #", i
             #spot = fetch_spot(True,global_state())
             #parking_dict[ids[i]] = spot.spots
-            #bogus.pose.position.x = 33.75 #randint(3, 36)
-            #bogus.pose.position.y = 37.75#randint(20, 40)
-            #bogus.pose.position.x = spot.spots[0]
-            #bogus.pose.position.y = spot.spots[1]
             bogus.pose.position.x = spots[spots_order[spot_ctr]][0]
             bogus.pose.position.y = spots[spots_order[spot_ctr]][1]
-            bogus.pose.position.z = 0
+	    """
+            bogus.pose.position.x = 33.75 #randint(3, 36)
+            bogus.pose.position.y = 37.75#randint(20, 40)
+            """
+	    """
+            bogus.pose.position.x = spot.spots[0]
+            bogus.pose.position.y = spot.spots[1]
+            bogus.pose.position.z = spot.spots[2]
             print bogus.pose.position.x
             print bogus.pose.position.y
             print bogus.pose.position.z
+            """
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
+            msg.pd = resp.pd
+            msg.pc = resp.pc
             command.publish(msg)
             time.sleep(5)
             k += 2.5
 	    spot_ctr += 1
-
+            """
         elif time_off > cars_stay[i]:
             cars_stay[i] = 99999
             msg.state = "return"
@@ -195,4 +203,4 @@ while True:
             resp = fetch_path([bogus, exitc])
             msg.result = resp.path
             command.publish(msg)
-
+             """
