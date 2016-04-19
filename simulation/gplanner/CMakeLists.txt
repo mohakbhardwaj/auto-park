@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(gplanner CXX)
- #set(CMAKE_CXX_FLAGS "-std=c++11 $(CMAKE_CXX_FLAGS)")
-set (CMAKE_CXX_STANDARD 11)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -66,6 +65,7 @@ add_service_files(
    FILES
    OptimalSpotGenerator.srv
    spotsTreadCost.srv
+   mab.srv
 
  )
 
@@ -157,8 +157,6 @@ file(GLOB gplanner_SRC
  src/roshandle.cpp
  src/planner_node.cpp 
  src/pathplanner.cpp)
-
-
 
 
 set_property(TARGET planner_node PROPERTY CXX_STANDARD 11)
