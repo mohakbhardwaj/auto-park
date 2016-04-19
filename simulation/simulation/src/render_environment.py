@@ -26,15 +26,17 @@ mab = rospy.Publisher("realtime_update", rt_data, queue_size=0)
 
 buffer_region = 8
 smoothness = 10
-speed = 2 * smoothness
+speed = 10 * smoothness
 current_time = [0]
 path_resolution = 5
 parking_duration = {}
 returning_duration = {}
 pause_duration = {}
 vehicles = []
-physical_location = [[i, 99, 99] for i in range(0, 108)]
+#physical_location = [[i, 99, 99] for i in range(0, 108)]
+physical_location = {}
 priority_count = 0
+return_priority_count = -1
 rospack = rospkg.RosPack()
 stl_path = "file://" + rospack.get_path('simulation') + "/src/res/"
 cars_dict = {1: "Models/Batmobile/Batmobile.dae", 2: "Models/Protect_Van/Protect_Van.dae",
@@ -54,13 +56,12 @@ spots_config = spots.values()
 class Car:
     def __init__(self, vehicle_id, path, priority, pd, pc):
         # set the markers associated with this vehicle
-        self.priority = priority
         self.initiate = 0
         self.check = 0
         self.vehicle_marker = Marker()
         self.vehicle_marker.header.frame_id = 'map'
         self.vehicle_marker.action = Marker.ADD
-	self.proximity_marker = Marker()
+        self.proximity_marker = Marker()
         self.proximity_marker.header.frame_id = 'map'
         self.destination_marker = Marker()
         self.destination_marker.header.frame_id = 'map'
@@ -78,42 +79,47 @@ class Car:
         self.vehicle_marker.mesh_use_embedded_materials = True
         self.destination_marker.type = Marker.CYLINDER
         self.path_marker.type = Marker.LINE_STRIP
-	self.proximity_marker.type = Marker.CYLINDER
+        self.proximity_marker.type = Marker.CYLINDER
         self.vehicle_marker.ns = "Vehicle"
         self.destination_marker.ns = "Markers"
         self.path_marker.ns = "Path"
-	self.proximity_marker.ns = "Buffer Space"
+        self.proximity_marker.ns = "Buffer Space"
         self.state = "arrive"
         self.vehicle_marker.color.a = 1
         self.destination_marker.color.a = 1
         self.path_color.a = 1
-	self.proximity_marker.color.a = 0.9
+        self.proximity_marker.color.a = 0.9
         self.color = [round(random(), 2) for _ in range(0, 3)]
         self.id = vehicle_id
-        self.draw_path(path, self.state, pd, pc)
+        self.draw_path(path, self.state, pd, pc, priority)
         self.motion_current = current_time
         self.motion = 1
         self.path_index = 0
         self.vehicle_marker.id = vehicle_id
         self.destination_marker.id = vehicle_id
         self.path_marker.id = vehicle_id
-	self.proximity_marker.id = vehicle_id
+        self.proximity_marker.id = vehicle_id
         self.vehicle_marker.color.r, self.vehicle_marker.color.g, self.vehicle_marker.color.b = self.color
         self.destination_marker.color.r, self.destination_marker.color.g, self.destination_marker.color.b = self.color
         self.path_color.r, self.path_color.g, self.path_color.b = self.color
-	self.proximity_marker.color.r, self.proximity_marker.color.g, self.proximity_marker.color.b = self.color
-        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = scale_dict[select_random]
-        self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 3.5, 0.1]
-	self.proximity_marker.scale.x, self.proximity_marker.scale.y, self.proximity_marker.scale.z = [buffer_region, buffer_region, 0.1]
+        self.proximity_marker.color.r, self.proximity_marker.color.g, self.proximity_marker.color.b = self.color
+        self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = scale_dict[
+            select_random]
+        self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 3.5,
+                                                                                                             0.1]
+        self.proximity_marker.scale.x, self.proximity_marker.scale.y, self.proximity_marker.scale.z = [buffer_region,
+                                                                                                       buffer_region,
+                                                                                                       0.1]
         self.path_marker.scale.x = 0.3
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [
             0, 0, 0, 1]
         self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [
             0, 0, 0, 1]
-	self.proximity_marker.pose.orientation.x, self.proximity_marker.pose.orientation.y, self.proximity_marker.pose.orientation.z, self.proximity_marker.pose.orientation.w = [ 0, 0, 0,  1]
+        self.proximity_marker.pose.orientation.x, self.proximity_marker.pose.orientation.y, self.proximity_marker.pose.orientation.z, self.proximity_marker.pose.orientation.w = [
+            0, 0, 0, 1]
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y, self.vehicle_marker.pose.position.z = [
             2.5, 2, 0]
-	self.proximity_marker.pose.position.z = 0
+        self.proximity_marker.pose.position.z = 0
         self.destination_marker.pose.position.z = 0
         self.spot_id = spots_id[spots_config.index(self.vehicle_path[-1][0:2])]
         self.initiate = 1
@@ -127,7 +133,7 @@ class Car:
         return tf.transformations.euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])[2]
 
     def pause(self):
-        self.motion_start = current_time[0] - (self.path_index)/ speed - 0.5
+        self.motion_start = current_time[0] - (self.path_index) / speed
 
     def move(self):
         # update the state of the vehicle
@@ -137,8 +143,10 @@ class Car:
                     self.vehicle_path[-1][2])
             self.clear_path()
         else:
-            self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
-	    self.proximity_marker.pose.position.x, self.proximity_marker.pose.position.y = self.interpolated_path[self.path_index][0:2]
+            self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[
+                                                                                           self.path_index][0:2]
+            self.proximity_marker.pose.position.x, self.proximity_marker.pose.position.y = self.interpolated_path[
+                                                                                               self.path_index][0:2]
             self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(
                     self.interpolated_path[self.path_index][2])
             self.path_marker.points = self.points_trace[int(self.path_index / path_resolution):-1]
@@ -148,76 +156,83 @@ class Car:
         x, y, th = start
         tx = math.cos(x)
         ty = math.sin(x)
-        radius = 1/curvature
-        xc = x - radius*ty
-        yc = y + radius*tx
-        angle = distance/radius
+        radius = 1 / curvature
+        xc = x - radius * ty
+        yc = y + radius * tx
+        angle = distance / radius
         cosa = math.cos(angle)
         sina = math.sin(angle)
-        nx = xc + radius*(cosa*ty + sina*tx)
-        ny = yc + radius*(sina*ty - cosa*tx)
-        nth = (th + angle + np.pi) % (2*np.pi) - np.pi
+        nx = xc + radius * (cosa * ty + sina * tx)
+        ny = yc + radius * (sina * ty - cosa * tx)
+        nth = (th + angle + np.pi) % (2 * np.pi) - np.pi
         return [nx, ny, nth]
 
     def interpolate(self):
         # add intermediate steps for smooth motion
-	for i in range(0, len(self.vehicle_path)-3):
-            if self.vehicle_path[i][2] != self.vehicle_path[i+1][2]:
-                steps = int(np.linalg.norm(np.array(self.vehicle_path[i+1][0:2]) - np.array(self.vehicle_path[i][0:2]))*speed)
-                x = [self.vehicle_path[j][0] for j in range(max(i-3, 0), min(i+3, len(self.vehicle_path)-1))]
-                y = [self.vehicle_path[j][1] for j in range(max(i-3, 0), min(i+3, len(self.vehicle_path)-1))]
+        for i in range(0, len(self.vehicle_path) - 3):
+            if self.vehicle_path[i][2] != self.vehicle_path[i + 1][2]:
+                steps = int(np.linalg.norm(
+                    np.array(self.vehicle_path[i + 1][0:2]) - np.array(self.vehicle_path[i][0:2])) * smoothness)
+                x = [self.vehicle_path[j][0] for j in range(max(i - 3, 0), min(i + 3, len(self.vehicle_path) - 1))]
+                y = [self.vehicle_path[j][1] for j in range(max(i - 3, 0), min(i + 3, len(self.vehicle_path) - 1))]
                 z = np.polyfit(x, y, 2)
                 f = np.poly1d(z)
-                xspan = np.linspace(self.vehicle_path[i][0], self.vehicle_path[i+1][0], steps)
+                xspan = np.linspace(self.vehicle_path[i][0], self.vehicle_path[i + 1][0], steps)
                 yspan = f(xspan)
-                heading = [math.atan2(yspan[j+1] - yspan[j], xspan[j+1] - xspan[j]) for j in range(0, len(x) - 1)]
+                heading = [math.atan2(yspan[j + 1] - yspan[j], xspan[j + 1] - xspan[j]) for j in range(0, len(xspan) - 1)]
                 self.interpolated_path += zip(xspan, yspan, heading)
             else:
-                steps = int(np.linalg.norm(np.array(self.vehicle_path[i+1][0:2]) - np.array(self.vehicle_path[i][0:2]))*speed)
-                xspan = [round(val, 2) for val in np.linspace(self.vehicle_path[i][0], self.vehicle_path[i+1][0], steps)]
-                yspan = [round(val, 2) for val in np.linspace(self.vehicle_path[i][1], self.vehicle_path[i+1][1], steps)]
+                steps = int(np.linalg.norm(
+                    np.array(self.vehicle_path[i + 1][0:2]) - np.array(self.vehicle_path[i][0:2])) * smoothness)
+                xspan = [round(val, 2) for val in
+                         np.linspace(self.vehicle_path[i][0], self.vehicle_path[i + 1][0], steps)]
+                yspan = [round(val, 2) for val in
+                         np.linspace(self.vehicle_path[i][1], self.vehicle_path[i + 1][1], steps)]
                 heading = [self.vehicle_path[i][2]] * steps
                 self.interpolated_path += zip(xspan, yspan, heading)
-        for j in range(len(self.vehicle_path)-3, len(self.vehicle_path) - 2):
+        for j in range(len(self.vehicle_path) - 3, len(self.vehicle_path) - 2):
             if self.vehicle_path[j][2] != self.vehicle_path[j + 1][2]:
-                steps = int(self.distances[j+1] * smoothness)
+                steps = int(self.distances[j + 1] * smoothness)
                 l = 0
-                dl = math.copysign(self.distances[j+1]/steps, self.distances[j+1])
-                while abs(l) < abs(self.distances[j+1]):
-                    self.interpolated_path.append(self.curve(self.vehicle_path[j], self.curvatures[j+1], l))
+                dl = math.copysign(self.distances[j + 1] / steps, self.distances[j + 1])
+                while abs(l) < abs(self.distances[j + 1]):
+                    self.interpolated_path.append(self.curve(self.vehicle_path[j], self.curvatures[j + 1], l))
                     l += dl
             else:
-                steps = int(self.distances[j+1] * smoothness)
+                steps = int(self.distances[j + 1] * smoothness)
                 xspan = [round(val, 2) for val in
                          np.linspace(self.vehicle_path[j][0], self.vehicle_path[j + 1][0], steps)]
                 yspan = [round(val, 2) for val in
                          np.linspace(self.vehicle_path[j][1], self.vehicle_path[j + 1][1], steps)]
                 heading = [self.vehicle_path[j][2]] * steps
                 self.interpolated_path += zip(xspan[1:], yspan[1:], heading[1:])
-        steps = int(np.linalg.norm(np.array(self.vehicle_path[-2][0:2]) - np.array(self.vehicle_path[-1][0:2]))*speed)
+        steps = int(np.linalg.norm(np.array(self.vehicle_path[-2][0:2]) - np.array(self.vehicle_path[-1][0:2])) * smoothness)
         xspan = [round(val, 2) for val in np.linspace(self.vehicle_path[-2][0], self.vehicle_path[-1][0], steps)]
         yspan = [round(val, 2) for val in np.linspace(self.vehicle_path[-2][1], self.vehicle_path[-1][1], steps)]
         heading = [round(val, 2) for val in np.linspace(self.vehicle_path[-2][2], self.vehicle_path[-1][2], steps)]
         self.interpolated_path += zip(xspan, yspan, heading)
 
-    def draw_path(self, path, state, pd, pc):
+    def draw_path(self, path, state, pd, pc, priority):
+        global physical_location
         # draw the paths of the vehicle on RViz
+        self.initiate = 0
+        self.path_index = 0
         self.distances = pd
         self.curvatures = pc
         self.vehicle_path = []
         self.interpolated_path = []
         for i in range(0, len(path)):
-            self.vehicle_path.append(
-                    [path[i].pose.position.x, path[i].pose.position.y, self.angfromquat(path[i].pose.orientation)])
+            self.vehicle_path.append([path[i].pose.position.x, path[i].pose.position.y, self.angfromquat(path[i].pose.orientation)])
         self.destination_marker.action = Marker.ADD
         self.destination_marker.pose.position.x, self.destination_marker.pose.position.y = self.vehicle_path[-1][0:2]
         self.path_marker.action = Marker.ADD
-	self.proximity_marker.action = Marker.ADD
+        self.proximity_marker.action = Marker.ADD
         self.motion = 1
         self.motion_start = time.time()
         self.motion_init = time.time()
         self.interpolate()
         self.state = state
+        self.priority = priority
         pts = [0] * len(self.interpolated_path)
         for i in range(0, len(self.interpolated_path), path_resolution):
             pts[i] = Point()
@@ -234,6 +249,8 @@ class Car:
         self.path_marker.colors.append(self.path_color)
         self.points_trace = self.path_marker.points
         self.color_trace = self.path_marker.colors
+        track()
+        self.initiate = 1
 
     def clear_path(self):
         global parking_duration, pause_duration, returning_duration
@@ -252,11 +269,13 @@ class Car:
         self.motion_start = 0
         self.motion_init = 0
         self.motion = 0
+        self.path_index = 0
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.vehicle_path[-1][0:2]
-        self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(self.vehicle_path[-1][2])
+        self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(
+                self.vehicle_path[-1][2])
         self.path_marker.action = Marker.DELETE
         self.destination_marker.action = Marker.DELETE
-	self.proximity_marker.action = Marker.DELETE
+        self.proximity_marker.action = Marker.DELETE
         self.check = 0
 
     def clear(self):
@@ -266,6 +285,7 @@ class Car:
     def service_response(self):
         return self.interpolated_path[self.path_index]
 
+
 def mab_publish(sid, action, t):
     temp = rt_data()
     temp.id = sid - 1
@@ -274,8 +294,9 @@ def mab_publish(sid, action, t):
     temp.ctr = 0
     mab.publish(temp)
 
+
 def vehicle_state(data):
-    global vehicles, priority_count
+    global vehicles, priority_count, return_priority_count
     if data.state == "arrive":
         a = Car(data.id, data.result, priority_count, data.pd, data.pc)
         vehicles.append(a)
@@ -287,7 +308,8 @@ def vehicle_state(data):
         mab_ctr.ctr = priority_count
         mab.publish(mab_ctr)
     elif data.state == "return":
-        vehicles[data.id].draw_path(data.result, data.state, data.pd, data.pc)
+        vehicles[data.id].draw_path(data.result, data.state, data.pd, data.pc, return_priority_count)
+        return_priority_count += -1
 
 
 def global_state(req):
@@ -319,13 +341,17 @@ def update():
 
 
 def track():
-    global physical_location
+    global physical_location, priorities
     for car in vehicles:
         if car.motion:
-            physical_location[car.priority][1:3] = car.interpolated_path[car.path_index][0:2]
+            physical_location[car.priority] = car.interpolated_path[car.path_index][0:2]
+            # physical_location[car.priority][1:3] = car.interpolated_path[car.path_index][0:2]
         elif car.check == 0:
-            physical_location[car.priority][1:3] = [99, 99]
+            physical_location[car.priority] = [99, 99]
+            # physical_location[car.priority][1:3] = [99, 99]
             car.check = 1
+    priorities = sorted(physical_location.keys())
+
 
 def parking_stats():
     root = Tk()
@@ -333,8 +359,8 @@ def parking_stats():
     var = StringVar()
     var.set('Auto-Park')
     myFont = Font(family="Times New Roman", size=18)
-    l = Label(root, textvariable = var)
-    l.configure(font = myFont)
+    l = Label(root, textvariable=var)
+    l.configure(font=myFont)
     l.pack()
     while True:
         time.sleep(1)
@@ -342,18 +368,22 @@ def parking_stats():
         text2 = " "
         text3 = " "
         if len(parking_duration.values()) != 0:
-	    text1 = "Average Parking Duration: " + str(round(sum(parking_duration.values())/len(parking_duration.values()), 2))
-	    text2 = "Average Pause Duration: " + str(round(sum(pause_duration.values())/len(pause_duration.values()), 2))
+            text1 = "Average Parking Duration: " + str(
+                round(sum(parking_duration.values()) / len(parking_duration.values()), 2))
+            text2 = "Average Pause Duration: " + str(
+                round(sum(pause_duration.values()) / len(pause_duration.values()), 2))
         if len(returning_duration.values()) != 0:
-	    text3 = "Average Return Duration: " + str(round(sum(returning_duration.values())/len(returning_duration.values()), 2))
+            text3 = "Average Return Duration: " + str(
+                round(sum(returning_duration.values()) / len(returning_duration.values()), 2))
         final = text1 + "\n" + text2 + "\n" + text3 + "\n"
         var.set(final)
         root.update_idletasks()
 
+
 # have a custom message of line, cylinder marker, and a cube marker in each object of the class
 # keep on updating the positions based on motion flag
 def draw():
-    global current_time, physical_location
+    global current_time, physical_location, priorities
     while True:
         time.sleep(0.0001)
         current_time[0] = time.time()
@@ -361,12 +391,16 @@ def draw():
         for car in vehicles:
             if car.motion and car.initiate:
                 flag = 0
-                for i in range(0, car.priority):
-                    if np.linalg.norm(np.array(physical_location[car.priority][1:3]) - np.array(
-                            physical_location[i][1:3])) < buffer_region:
-                        car.pause()
-                        flag = 1
-                        break
+                try:
+                    for i in range(0, priorities.index(car.priority)):
+                        if np.linalg.norm(np.array(physical_location[car.priority]) - np.array(
+                                physical_location[i])) < buffer_region:
+                            car.pause()
+                            flag = 1
+                            break
+                except ValueError:
+                    flag = 1
+                    pass
                 if flag == 0:
                     car.move()
                     rviz.publish(car.path_marker)
@@ -375,7 +409,7 @@ def draw():
                     time.sleep(0.0001)
                     rviz.publish(car.destination_marker)
                     time.sleep(0.0001)
-		    rviz.publish(car.proximity_marker)
+                    rviz.publish(car.proximity_marker)
                     time.sleep(0.0001)
 
 
@@ -386,5 +420,3 @@ stats = Thread(target=parking_stats)
 access.start()
 render.start()
 stats.start()
-
-
