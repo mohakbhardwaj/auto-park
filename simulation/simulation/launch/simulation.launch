@@ -8,5 +8,6 @@
 	type="planner_node" 
 	output="screen" 
 	/>
+	<node name="MabPlanner" pkg = "mabplanner" type="ucbplanner.py" output="screen"/>	
 	<node name="map_server" pkg = "map_server" type="map_server" args="$(find simulation)/src/res/map.yaml" output="screen" />
 </launch>
