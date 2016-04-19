@@ -8,6 +8,8 @@ import numpy as np
 import rospkg
 import math
 import pickle
+from Tkinter import *
+from tkFont import Font
 
 from visualization_msgs.msg import *
 from simulation.msg import path_id
@@ -325,49 +327,28 @@ def track():
             physical_location[car.priority][1:3] = [99, 99]
             car.check = 1
 
-
 def parking_stats():
-    tt = Marker()
-    tt.header.frame_id = 'map'
-    tt.type = Marker.TEXT_VIEW_FACING
-    tt.scale.z = 2
-    tt.action = Marker.ADD
-    tt.ns = "Statistics"
-    tt.id = 1
-    tt.color.a = 1
-    tt.pose.position.x, tt.pose.position.y = [-4, -10]
-    tt1 = Marker()
-    tt1.header.frame_id = 'map'
-    tt1.type = Marker.TEXT_VIEW_FACING
-    tt1.scale.z = 2
-    tt1.action = Marker.ADD
-    tt1.ns = "Statistics"
-    tt1.id = 2
-    tt1.color.a = 1
-    tt1.pose.position.x, tt.pose.position.y = [-15, -10]
-    tt2 = Marker()
-    tt2.header.frame_id = 'map'
-    tt2.type = Marker.TEXT_VIEW_FACING
-    tt2.scale.z = 2
-    tt2.action = Marker.ADD
-    tt2.ns = "Statistics"
-    tt2.id = 3
-    tt2.color.a = 1
-    tt2.pose.position.x, tt.pose.position.y = [-19, -10]
+    root = Tk()
+    root.title("Auto-Park: Realtime Statistics")
+    var = StringVar()
+    var.set('Auto-Park')
+    myFont = Font(family="Times New Roman", size=18)
+    l = Label(root, textvariable = var)
+    l.configure(font = myFont)
+    l.pack()
     while True:
-	if len(parking_duration.values()) != 0:
-	    tt.text = "Average Parking Duration: " + str(round(sum(parking_duration.values())/len(parking_duration.values()), 2)) + "           "
-	    tt1.text = "Average Pause Duration: " + str(round(sum(pause_duration.values())/len(pause_duration.values()), 2)) + "                    "
-	    rviz.publish(tt)
-	    time.sleep(1)
-	    rviz.publish(tt1)
-	    time.sleep(1)
-	if len(returning_duration.values()) != 0:
-	    tt2.text = "Average Return Duration: " + str(round(sum(returning_duration.values())/len(returning_duration.values()), 2)) + "                                    "
-	    time.sleep(1)
- 	    rviz.publish(tt2)
-	    time.sleep(1)
-
+        time.sleep(1)
+        text1 = " "
+        text2 = " "
+        text3 = " "
+        if len(parking_duration.values()) != 0:
+	    text1 = "Average Parking Duration: " + str(round(sum(parking_duration.values())/len(parking_duration.values()), 2))
+	    text2 = "Average Pause Duration: " + str(round(sum(pause_duration.values())/len(pause_duration.values()), 2))
+        if len(returning_duration.values()) != 0:
+	    text3 = "Average Return Duration: " + str(round(sum(returning_duration.values())/len(returning_duration.values()), 2))
+        final = text1 + "\n" + text2 + "\n" + text3 + "\n"
+        var.set(final)
+        root.update_idletasks()
 
 # have a custom message of line, cylinder marker, and a cube marker in each object of the class
 # keep on updating the positions based on motion flag
@@ -405,3 +386,5 @@ stats = Thread(target=parking_stats)
 access.start()
 render.start()
 stats.start()
+
+
