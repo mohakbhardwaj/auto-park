@@ -63,13 +63,10 @@ cars_stay = [time_departure_off + scalingfactor*round(elem, 1) for elem in np.ra
 print "1"
 rospy.wait_for_service('optimPath')
 print "2"
-#rospy.wait_for_service('OptimalSpotGenerator')
+rospy.wait_for_service('OptimalSpotGenerator')
 print "3"
 fetch_path = rospy.ServiceProxy('optimPath', optimPath)
-#fetch_spot = rospy.ServiceProxy('OptimalSpotGenerator', OptimalSpotGenerator)
-
-
-parking_dict = {}
+fetch_spot = rospy.ServiceProxy('OptimalSpotGenerator', OptimalSpotGenerator)
 
 entrance = PoseStamped()
 entrance.pose.position.x = 2.5
@@ -170,37 +167,33 @@ while True:
             msg.state = "arrive"
             msg.id = i
             print "Publish car #", i
-            #spot = fetch_spot(True,global_state())
-            #parking_dict[ids[i]] = spot.spots
+            spot = fetch_spot(True,global_state())
+            """
+            # Greedy
             bogus.pose.position.x = spots[spots_order[spot_ctr]][0]
             bogus.pose.position.y = spots[spots_order[spot_ctr]][1]
 	    """
-            bogus.pose.position.x = 33.75 #randint(3, 36)
-            bogus.pose.position.y = 37.75#randint(20, 40)
-            """
-	    """
+	    # SBPL
             bogus.pose.position.x = spot.spots[0]
             bogus.pose.position.y = spot.spots[1]
             bogus.pose.position.z = spot.spots[2]
-            print bogus.pose.position.x
-            print bogus.pose.position.y
-            print bogus.pose.position.z
-            """
+	    dict_spots[i] = [bogus.pose.position.x, bogus.pose.position.y]
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             msg.pd = resp.pd
             msg.pc = resp.pc
             command.publish(msg)
             time.sleep(5)
-            k += 2.5
 	    spot_ctr += 1
-            """
         elif time_off > cars_stay[i]:
             cars_stay[i] = 99999
             msg.state = "return"
             msg.id = i
             print "Remove car#", i
+            bogus.pose.position.x = dict_spots[i][0]
+            bogus.pose.position.y = dict_spots[i][1]
             resp = fetch_path([bogus, exitc])
             msg.result = resp.path
+            msg.pd = resp.pd
+            msg.pc = resp.pc
             command.publish(msg)
-             """
