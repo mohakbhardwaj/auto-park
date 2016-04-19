@@ -95,7 +95,7 @@ class Car:
         self.path_color.r, self.path_color.g, self.path_color.b = self.color
         self.vehicle_marker.scale.x, self.vehicle_marker.scale.y, self.vehicle_marker.scale.z = scale_dict[select_random]
         self.destination_marker.scale.x, self.destination_marker.scale.y, self.destination_marker.scale.z = [2.5, 3.5, 0.1]
-        self.path_marker.scale.x = 0.1
+        self.path_marker.scale.x = 0.3
         self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = [
             0, 0, 0, 1]
         self.destination_marker.pose.orientation.x, self.destination_marker.pose.orientation.y, self.destination_marker.pose.orientation.z, self.destination_marker.pose.orientation.w = [
@@ -149,7 +149,24 @@ class Car:
 
     def interpolate(self):
         # add intermediate steps for smooth motion
-        for j in range(0, len(self.vehicle_path) - 2):
+	for i in range(0, len(self.vehicle_path)-3):
+            if self.vehicle_path[i][2] != self.vehicle_path[i+1][2]:
+                steps = int(np.linalg.norm(np.array(self.vehicle_path[i+1][0:2]) - np.array(self.vehicle_path[i][0:2]))*speed)
+                x = [self.vehicle_path[j][0] for j in range(max(i-3, 0), min(i+3, len(self.vehicle_path)-1))]
+                y = [self.vehicle_path[j][1] for j in range(max(i-3, 0), min(i+3, len(self.vehicle_path)-1))]
+                z = np.polyfit(x, y, 2)
+                f = np.poly1d(z)
+                xspan = np.linspace(self.vehicle_path[i][0], self.vehicle_path[i+1][0], steps)
+                yspan = f(xspan)
+                heading = [math.atan2(yspan[j+1] - yspan[j], xspan[j+1] - xspan[j]) for j in range(0, len(x) - 1)]
+                self.interpolated_path += zip(xspan, yspan, heading)
+            else:
+                steps = int(np.linalg.norm(np.array(self.vehicle_path[i+1][0:2]) - np.array(self.vehicle_path[i][0:2]))*speed)
+                xspan = [round(val, 2) for val in np.linspace(self.vehicle_path[i][0], self.vehicle_path[i+1][0], steps)]
+                yspan = [round(val, 2) for val in np.linspace(self.vehicle_path[i][1], self.vehicle_path[i+1][1], steps)]
+                heading = [self.vehicle_path[i][2]] * steps
+                self.interpolated_path += zip(xspan, yspan, heading)
+        for j in range(len(self.vehicle_path)-3, len(self.vehicle_path) - 2):
             if self.vehicle_path[j][2] != self.vehicle_path[j + 1][2]:
                 steps = int(self.distances[j+1] * smoothness)
                 l = 0
