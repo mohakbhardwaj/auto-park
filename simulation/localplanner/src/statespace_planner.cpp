@@ -427,7 +427,7 @@ bool poses_close(const Pose& p1, const Pose& p2)
 	double d_angle = abs(modulo(p1.th - p2.th + PI, (2.0*PI)) - PI);
 	// d_angle < rad(15.0) &&
 	////////////////////////DEFINITELY WORKS/////////////////////////
-	return  d_angle < rad(30) && distance_euclidean(p1,p2) <= 2;
+	return  d_angle < rad(45) && distance_euclidean(p1,p2) <= 2.5;
 	//////////////////////////////////////////////////////
 
 

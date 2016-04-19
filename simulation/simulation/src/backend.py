@@ -22,9 +22,11 @@ with open(rospack.get_path('simulation') + "/src/id_to_config.p", "rb") as f:
     spots = pickle.load(f)
 
 spot_id = list(spots)
+spot_config = spots.values()
 
 spots_order = []
 spot_ctr = 0
+dict_spots = {}
 
 for i in range(0, 10, 2):
     for j in range(13*i, 13*i+7):
@@ -63,10 +65,10 @@ cars_stay = [time_departure_off + scalingfactor*round(elem, 1) for elem in np.ra
 print "1"
 rospy.wait_for_service('optimPath')
 print "2"
-rospy.wait_for_service('OptimalSpotGenerator')
+#rospy.wait_for_service('OptimalSpotGenerator')
 print "3"
 fetch_path = rospy.ServiceProxy('optimPath', optimPath)
-fetch_spot = rospy.ServiceProxy('OptimalSpotGenerator', OptimalSpotGenerator)
+#fetch_spot = rospy.ServiceProxy('OptimalSpotGenerator', OptimalSpotGenerator)
 
 entrance = PoseStamped()
 entrance.pose.position.x = 2.5
@@ -157,6 +159,13 @@ def global_state():
 timer = Thread(target=draw_environment)
 timer.start()
 
+def orient(pose):
+    global bogus
+    r_id = spot_id[spot_config.index(pose)]
+    row = (((r_id - 1)/13)%2)
+    bogus.pose.orientation.x, bogus.pose.orientation.y, bogus.pose.orientation.z, bogus.pose.orientation.w = tf.transformations.quaternion_from_euler(0, 0, (row*3.14) + 3.14/2)
+
+
 while True:
     time.sleep(0.5)
     time_off = time.time() - time_init
@@ -166,18 +175,19 @@ while True:
             cars_arrival[i] = 99999
             msg.state = "arrive"
             msg.id = i
-            print "Publish car #", i
-            spot = fetch_spot(True,global_state())
-            """
+            print "Publish car #", i            
             # Greedy
             bogus.pose.position.x = spots[spots_order[spot_ctr]][0]
             bogus.pose.position.y = spots[spots_order[spot_ctr]][1]
 	    """
 	    # SBPL
+	    spot = fetch_spot(True,global_state())
             bogus.pose.position.x = spot.spots[0]
             bogus.pose.position.y = spot.spots[1]
             bogus.pose.position.z = spot.spots[2]
+	    """
 	    dict_spots[i] = [bogus.pose.position.x, bogus.pose.position.y]
+            orient(dict_spots[i])
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             msg.pd = resp.pd
