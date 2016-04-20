@@ -3,6 +3,7 @@
 import rospy
 import time
 from simulation.msg import path_id
+from std_msgs.msg import Int64
 import numpy as np
 from localplanner.srv import optimPath
 from geometry_msgs.msg import PoseStamped
@@ -41,6 +42,7 @@ for i in range(0, 10, 2):
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
 rospy.init_node("Backend")
 command = rospy.Publisher("simulation_backend", path_id, queue_size=0)
+return_notify = rospy.Publisher("return_update", Int64, queue_size=0)
 
 x = 0
 
@@ -182,7 +184,7 @@ while True:
             cars_arrival[i] = 99999
             msg.state = "arrive"
             msg.id = i
-            print "Publish car #", i
+            print "Publish car #", i,
             # Greedy
             bogus.pose.position.x = spots[spots_order[spot_ctr]][0]
             bogus.pose.position.y = spots[spots_order[spot_ctr]][1]
@@ -193,7 +195,8 @@ while True:
             bogus.pose.position.y = spot.spots[1]
             bogus.pose.position.z = spot.spots[2]
             """
-            dict_spots[i] = [bogus.pose.position.x, bogus.pose.position.y]
+            #print bogus
+            dict_spots[i] = [spots[spots_order[spot_ctr]][0], spots[spots_order[spot_ctr]][1]]
             orient(dict_spots[i])
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
@@ -205,12 +208,15 @@ while True:
             cars_stay[i] = 99999
             msg.state = "return"
             msg.id = i
+            #print dict_spots
             print "Remove car#", i
             bogus.pose.position.x = dict_spots[i][0]
             bogus.pose.position.y = dict_spots[i][1]
             orient(dict_spots[i])
+            #print bogus
             resp = fetch_path([bogus, exitc])
             msg.result = resp.path
             msg.pd = resp.pd
             msg.pc = resp.pc
             command.publish(msg)
+            return_notify.publish(spot_id[spot_config.index(dict_spots[i])] - 1)
