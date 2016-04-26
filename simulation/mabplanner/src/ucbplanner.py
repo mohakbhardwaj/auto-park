@@ -18,6 +18,7 @@ spots_data = defaultdict(list) # {spotId: [park_time, exit_time, areaId]}
 nStep = 0
 vel = 5.55 #in m/s
 costUpperBound = 206/vel
+discount = 0.8
 
 def id2areaId(spotId):
 	row = (spotId)/52
@@ -33,7 +34,8 @@ def init():
 	for i in xrange(len(costlist)):
 		areaId = id2areaId(i)
 		# spots_data[i] = [0.0, (costlist[i]/vel), areaId]
-		spots_data[i] = [0.0, areaId*0.1, areaId]
+		# spots_data[i] = [0.0, (3-areaId)*0.1, areaId]
+		spots_data[i] = [0.0, 0.0, areaId]
 	
 	# normsum=0
 	# for i in spots_data.values():
@@ -61,7 +63,10 @@ def populate(data):
 	#if park or exit then update current cost else when car just enters update on nStep
 	global spots_data, nStep
 	if data.action == "park":
-		spots_data[data.id-1][0] = data.time
+		try:
+			spots_data[data.id-1][0] = data.time
+		except:
+			sys.stdout.write("Data ID is: "+ str(data.id))
 		# updateStats(data.id,data.time)
 		
 	elif data.action == "return":
@@ -88,7 +93,11 @@ def mabArmPull(req):
 			sys.stdout.write("J is "+ str(j))
 	#update Qtotal for each area
 	for j in segments_current.values():
-		j[3]=(j[0]/costUpperBound) - sqrt((2*log(nStep) )/j[1])
+		if j[1] != 0:
+			j[3]= discount*(j[0]/costUpperBound) - sqrt((2*log(nStep) )/j[1])
+		else:
+			j[3]= discount*(j[0]/costUpperBound)
+
 
 	bestArea=min(segments_current.iteritems(), key = lambda p: p[1][3])[0]
 	

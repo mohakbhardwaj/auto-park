@@ -114,7 +114,7 @@ int gridCoordinateToNodeId(const Pose&);
 
 int main(int argc, char **argv)
 {
-	LoadEnvironment("/home/pranav/catkin_ws/src/localplanner/env_files/env.txt", "/home/pranav/catkin_ws/src/localplanner/env_files/parking_spot.txt");
+	LoadEnvironment("/home/shivam/catkin_ws/src/localplanner/env_files/env.txt", "/home/shivam/catkin_ws/src/localplanner/env_files/parking_spot.txt");
 	//ROS node functionality
 	ros::init(argc, argv, "statespace_planner");
 	ros::NodeHandle n;

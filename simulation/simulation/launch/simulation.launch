@@ -1,13 +1,13 @@
 <launch>
+	<arg name="type" default="o" />
 	<node name="rviz" pkg = "rviz" type="rviz" output="screen" />
-	<node name="backend" pkg = "simulation" type="backend.py" output="screen" />
-	<node name="render_environment" pkg = "simulation" type="render_environment.py" />
-	<node name="statespace_planner" pkg = "localplanner" type="statespace_planner" output="screen" />
+	<node name="backend" pkg = "simulation" type="backend.py" args="$(arg type)" output="screen" />
+	<node name="render_environment" pkg = "simulation" type="render_environment.py" args="$(arg type)"/>
+	<node name="statespace_planner" pkg = "localplanner" type="statespace_planner" />
 	<node name="planner_node" 
 	pkg = "gplanner" 
 	type="planner_node" 
-	output="screen" 
 	/>
-	<node name="MabPlanner" pkg = "mabplanner" type="ucbplanner.py" output="screen"/>	
+	<node name="MabPlanner" pkg = "mabplanner" type="ucbplanner.py" />	
 	<node name="map_server" pkg = "map_server" type="map_server" args="$(find simulation)/src/res/map.yaml" output="screen" />
 </launch>

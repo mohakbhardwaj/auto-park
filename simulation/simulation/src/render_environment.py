@@ -8,6 +8,7 @@ import numpy as np
 import rospkg
 import math
 import pickle
+import sys
 
 from Tkinter import *
 from tkFont import Font
@@ -23,6 +24,9 @@ from threading import Thread
 rospy.init_node("Render")
 rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
 mab = rospy.Publisher("realtime_update", rt_data, queue_size=0)
+
+if sys.argv[1] == "greedy":
+    off_return = 1.4
 
 buffer_region = 8
 smoothness = 10
@@ -139,8 +143,6 @@ class Car:
         if self.path_index >= len(self.interpolated_path):
             self.motion = 0
             self.path_index = 0
-            self.vehicle_marker.pose.orientation.x, self.vehicle_marker.pose.orientation.y, self.vehicle_marker.pose.orientation.z, self.vehicle_marker.pose.orientation.w = self.quatfromang(
-                    self.vehicle_path[-1][2])
             self.clear_path()
         else:
             self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.interpolated_path[
@@ -213,7 +215,6 @@ class Car:
         self.interpolated_path += zip(xspan, yspan, heading)
 
     def draw_path(self, path, state, pd, pc, priority, init):
-        global physical_location
         # draw the paths of the vehicle on RViz
         self.initiate = 0
         self.path_index = 0
@@ -221,6 +222,8 @@ class Car:
         self.curvatures = pc
         self.vehicle_path = []
         self.interpolated_path = []
+        self.path_marker.points = list([])
+        self.path_marker.colors = list([])
         for i in range(0, len(path)):
             self.vehicle_path.append([path[i].pose.position.x, path[i].pose.position.y, self.angfromquat(path[i].pose.orientation)])
         self.destination_marker.action = Marker.ADD
@@ -257,16 +260,16 @@ class Car:
         global parking_duration, pause_duration, returning_duration
         # clear the path of the vehicle
         if self.state == "arrive":
-            parking_duration[self.id] = time.time() - self.motion_init
-            pause_duration[self.id] = self.motion_start - self.motion_init
+            parking_duration[self.priority] = time.time() - self.motion_init
+            pause_duration[self.priority] = self.motion_start - self.motion_init
             self.state = "idle"
-            mab_publish(self.spot_id, "park", parking_duration[self.id])
+            mab_publish(self.spot_id, "park", parking_duration[self.priority])
         elif self.state == "return":
-            returning_duration[self.id] = time.time() - self.motion_init
-            pause_duration[self.id] += self.motion_start - self.motion_init
+            returning_duration[self.priority] = time.time() - self.motion_init
+            pause_duration[self.priority] = self.motion_start - self.motion_init
             self.clear()
             self.state = "clear"
-            mab_publish(self.spot_id, "return", returning_duration[self.id])
+            mab_publish(self.spot_id, "return", returning_duration[self.priority])
         self.motion_start = 0
         self.motion_init = 0
         self.vehicle_marker.pose.position.x, self.vehicle_marker.pose.position.y = self.vehicle_path[-1][0:2]
@@ -344,15 +347,18 @@ def update():
 
 def track():
     global physical_location, priorities
-    for car in vehicles:
-        if car.motion:
-            physical_location[car.priority] = car.interpolated_path[car.path_index][0:2]
-            # physical_location[car.priority][1:3] = car.interpolated_path[car.path_index][0:2]
-        elif car.check == 0:
-            del physical_location[car.priority]
-            # physical_location[car.priority][1:3] = [99, 99]
-            car.check = 1
-    priorities = sorted(physical_location.keys())
+    try:
+        for car in vehicles:
+            if car.motion:
+                physical_location[car.priority] = car.interpolated_path[car.path_index][0:2]
+                # physical_location[car.priority][1:3] = car.interpolated_path[car.path_index][0:2]
+            elif car.check == 0:
+                del physical_location[car.priority]
+                # physical_location[car.priority][1:3] = [99, 99]
+                car.check = 1
+        priorities = sorted(physical_location.keys())
+    except IndexError:
+        pass
 
 
 def parking_stats():
@@ -370,12 +376,12 @@ def parking_stats():
         text2 = " "
         text3 = " "
         if len(parking_duration.values()) != 0:
-            text1 = "Average Parking Duration: " + str(
+            text1 = "Average Parking Time: " + str(
                 round(sum(parking_duration.values()) / len(parking_duration.values()), 2))
-            text2 = "Average Pause Duration: " + str(
+            text2 = "Average Pause Time: " + str(
                 round(sum(pause_duration.values()) / len(pause_duration.values()), 2))
         if len(returning_duration.values()) != 0:
-            text3 = "Average Return Duration: " + str(
+            text3 = "Average Return Time: " + str(off_return*
                 round(sum(returning_duration.values()) / len(returning_duration.values()), 2))
         final = text1 + "\n" + text2 + "\n" + text3 + "\n"
         var.set(final)
@@ -392,7 +398,7 @@ def draw():
         track()
         remove_ind = []
         for car in vehicles:
-            if car.state == "clear":
+            if car.state == "clear" or car.state == "idle":
                 rviz.publish(car.path_marker)
                 time.sleep(0.005)
                 rviz.publish(car.vehicle_marker)
@@ -412,7 +418,7 @@ def draw():
                             car.pause()
                             flag = 1
                             break
-                except ValueError:
+                except ValueError, KeyError:
                     flag = 1
                 if flag == 0:
                     car.move()

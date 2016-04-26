@@ -16,6 +16,14 @@ import rosnode
 from random import random
 import rospkg
 import pickle
+import sys
+
+
+if sys.argv[1] == "greedy":
+    mode = 'g'
+else:
+    mode = "o"
+
 
 rospack = rospkg.RosPack()
 
@@ -54,22 +62,32 @@ while x == 0:
 time.sleep(5)
 
 msg = path_id()
-time_departure_off = 120
 
-number_of_vehicles = 90
+if mode == 'g' or mode == 'o':
+    # PIRATES
+    time_departure_off = 120
+    number_of_vehicles = 90
+    scalingfactor = 6
+    cars_arrival = [scalingfactor * abs(8 - round(elem, 1)) for elem in np.random.rayleigh(2, number_of_vehicles)]
+    cars_stay = [time_departure_off + scalingfactor * round(elem, 1) for elem in np.random.chisquare(3, number_of_vehicles)]
+else:
+    # CONTINUOUS
+    time_departure_off = 30
+    number_of_vehicles = 4500
+    scalingfactor = 100000
+    cars_arrival = np.array([scalingfactor * round(elem, 1) for elem in np.random.poisson(5, number_of_vehicles)])
+    cars_stay = np.array([elem + 10 + 30*random() for elem in cars_arrival])
 
-scalingfactor = 6
 
-cars_arrival = [scalingfactor * abs(8 - round(elem, 1)) for elem in np.random.rayleigh(2, number_of_vehicles)]
-cars_stay = [time_departure_off + scalingfactor * round(elem, 1) for elem in np.random.chisquare(3, number_of_vehicles)]
+print min(cars_stay), min(cars_arrival)
 
 print "1"
 rospy.wait_for_service('optimPath')
 print "2"
-# rospy.wait_for_service('OptimalSpotGenerator')
+rospy.wait_for_service('OptimalSpotGenerator')
 print "3"
 fetch_path = rospy.ServiceProxy('optimPath', optimPath)
-# fetch_spot = rospy.ServiceProxy('OptimalSpotGenerator', OptimalSpotGenerator)
+fetch_spot = rospy.ServiceProxy('OptimalSpotGenerator', OptimalSpotGenerator)
 
 entrance = PoseStamped()
 entrance.pose.position.x = 2.5
@@ -177,39 +195,40 @@ def orient(pose):
 
 while True:
     time.sleep(0.5)
-    time_off = time.time() - time_init
     k = 0
     for i in range(0, len(cars_arrival)):
+        time_off = time.time() - time_init
         if time_off > cars_arrival[i]:
             cars_arrival[i] = 99999
             msg.state = "arrive"
             msg.id = i
-            print "Publish car #", i,
-            # Greedy
-            bogus.pose.position.x = spots[spots_order[spot_ctr]][0]
-            bogus.pose.position.y = spots[spots_order[spot_ctr]][1]
-            """
-            # SBPL
-            spot = fetch_spot(True,global_state())
-            bogus.pose.position.x = spot.spots[0]
-            bogus.pose.position.y = spot.spots[1]
-            bogus.pose.position.z = spot.spots[2]
-            """
-            #print bogus
-            dict_spots[i] = [spots[spots_order[spot_ctr]][0], spots[spots_order[spot_ctr]][1]]
+            print "Publish car #", i
+            if mode == 'g':
+                # Greedy
+                bogus.pose.position.x = spots[spots_order[spot_ctr]][0]
+                bogus.pose.position.y = spots[spots_order[spot_ctr]][1]
+                dict_spots[i] = [spots[spots_order[spot_ctr]][0], spots[spots_order[spot_ctr]][1]]
+                spot_ctr += 1
+            else:
+                # SBPL
+                spot = fetch_spot(True,global_state())
+                bogus.pose.position.x = spot.spots[0]
+                bogus.pose.position.y = spot.spots[1]
+                bogus.pose.position.z = spot.spots[2]
+                dict_spots[i] = [spot.spots[0], spot.spots[1]]       
             orient(dict_spots[i])
             resp = fetch_path([entrance, bogus])
             msg.result = resp.path
             msg.pd = resp.pd
             msg.pc = resp.pc
             command.publish(msg)
-            spot_ctr += 1
+
         if time_off > cars_stay[i]:
             cars_stay[i] = 99999
             msg.state = "return"
             msg.id = i
             #print dict_spots
-            print "Remove car#", i
+            print "Remove car #", i
             bogus.pose.position.x = dict_spots[i][0]
             bogus.pose.position.y = dict_spots[i][1]
             orient(dict_spots[i])
