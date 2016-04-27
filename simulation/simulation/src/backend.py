@@ -19,8 +19,12 @@ import pickle
 import sys
 
 
-if sys.argv[1] == "greedy":
+if sys.argv[1] == "greedy1":
     mode = 'g'
+    if sys.argv[1] == "greedy1":
+	order = "n"
+    else:
+	order = "r"
 else:
     mode = "o"
 
@@ -51,6 +55,9 @@ rviz = rospy.Publisher("visualization_msgs", Marker, queue_size=0, latch=True)
 rospy.init_node("Backend")
 command = rospy.Publisher("simulation_backend", path_id, queue_size=0)
 return_notify = rospy.Publisher("return_update", Int64, queue_size=0)
+
+if mode == "g" and order = "r":
+    spots_order = spots_order[::-1]
 
 x = 0
 
